@@ -68,13 +68,21 @@ function AIProfiles() {
       const settingsToSave = {
         ...aiSettings,
         modelConfig: {
-          ...aiSettings.modelConfig,
-          apiKey: apiKeyValue || aiSettings.modelConfig.apiKey // Use new value if provided, otherwise keep existing
+          ...aiSettings.modelConfig
         }
       }
+      
+      // Only include API key if a new one was provided (not empty and not masked)
+      if (apiKeyValue && apiKeyValue.trim() && !apiKeyValue.startsWith("***")) {
+        settingsToSave.modelConfig.apiKey = apiKeyValue.trim()
+      }
+      // If apiKeyValue is empty, don't include it - backend will keep existing key
+      
       const response = await sendMessage("ai-set-settings", { settings: settingsToSave })
       if (response?.state === "success") {
         message.success("Settings saved successfully")
+        // Clear the API key input field
+        setApiKeyValue("")
         // Reload to get masked API key
         await loadAISettings()
       } else {

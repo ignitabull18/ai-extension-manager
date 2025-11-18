@@ -129,14 +129,31 @@ export class LLMClient {
     }
 
     // Try to find JSON object/array in the text (more flexible)
-    const jsonObjectMatch = text.match(/\{[\s\S]*\}/)
+    // First try to fix common JSON errors
+    let cleanedText = text.trim()
+    
+    // Fix common GPT errors: replace } with ] before closing brace of arrays
+    // Pattern: array items followed by } instead of ]
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*"categories")/g, '$1$2]$3')
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*"category")/g, '$1$2]$3')
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*"useCases")/g, '$1$2]$3')
+    
+    const jsonObjectMatch = cleanedText.match(/\{[\s\S]*\}/)
     if (jsonObjectMatch) {
       try {
         const parsed = JSON.parse(jsonObjectMatch[0])
         logger().debug("[LLM] Successfully parsed JSON object from text")
         return parsed
       } catch (e) {
-        // Continue to try array
+        // Try original text if cleaned version failed
+        try {
+          const originalMatch = text.match(/\{[\s\S]*\}/)
+          if (originalMatch) {
+            return JSON.parse(originalMatch[0])
+          }
+        } catch (e2) {
+          // Continue to try array
+        }
       }
     }
 
