@@ -275,7 +275,7 @@ Based on the user's task, which extensions should be enabled or disabled? Return
     const config = await this.EM.LocalOptions.getValue<ai.IAIModelConfig>("aiModelConfig")
     return config || {
       primary: "gpt-5.1",
-      fallback: ["claude-sonnet-4-5", "gemini-2.5-pro"],
+      fallback: ["gpt-5.1-nano"],
       enabled: false
     }
   }
@@ -452,6 +452,7 @@ ${extensionsList}${existingGroupsInfo}
 
 Suggest groups that make sense based on functionality, use cases, and workflow. Return only valid JSON.`
 
+      logger().info(`[AI] Calling LLM for grouping with model: ${modelConfig.primary}`)
       const response = await this.llmClient.call(userPrompt, modelConfig, systemPrompt)
       const suggestions = this.llmClient.parseJSONResponse(response)
 
@@ -479,8 +480,8 @@ Suggest groups that make sense based on functionality, use cases, and workflow. 
         confidence: typeof suggestions.confidence === "number" ? Math.max(0, Math.min(1, suggestions.confidence)) : 0.6,
         explanation: suggestions.explanation || `Generated ${groups.length} group suggestions`
       }
-    } catch (error) {
-      logger().error("[AI] LLM grouping call failed, using fallback", error)
+    } catch (error: any) {
+      logger().error("[AI] LLM grouping call failed, using fallback", error?.message || error)
       return this.fallbackGrouping(context)
     }
   }

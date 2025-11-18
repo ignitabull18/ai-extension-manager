@@ -32,7 +32,7 @@ function AIProfiles() {
     modelConfig: {
       enabled: false,
       primary: "gpt-5.1",
-      fallback: ["claude-sonnet-4-5", "gemini-2.5-pro"],
+      fallback: ["gpt-5.1-nano"],
       apiKey: "",
       endpoint: ""
     }
@@ -596,12 +596,7 @@ function AIProfiles() {
                           style={{ width: "100%", marginTop: "8px" }}
                           options={[
                             { label: "OpenAI GPT-5.1", value: "gpt-5.1" },
-                            { label: "OpenAI GPT-5.1 Nano", value: "gpt-5.1-nano" },
-                            { label: "Anthropic Claude Sonnet 4.5", value: "claude-sonnet-4-5" },
-                            { label: "Anthropic Claude Haiku 4.5", value: "claude-haiku-4-5" },
-                            { label: "Anthropic Claude Opus 4.1", value: "claude-opus-4-1" },
-                            { label: "Google Gemini 2.5 Pro", value: "gemini-2.5-pro" },
-                            { label: "Google Gemini 2.5 Flash", value: "gemini-2.5-flash" }
+                            { label: "OpenAI GPT-5.1 Nano", value: "gpt-5.1-nano" }
                           ]}
                         />
                       </div>
@@ -620,9 +615,7 @@ function AIProfiles() {
                         />
                         <div style={{ marginTop: "4px" }}>
                           <Text type="secondary" style={{ fontSize: "12px" }}>
-                            {(aiSettings.modelConfig?.primary === "gpt-5.1" || aiSettings.modelConfig?.primary === "gpt-5.1-nano") && "Get your API key from https://platform.openai.com/api-keys"}
-                            {(aiSettings.modelConfig?.primary === "claude-sonnet-4-5" || aiSettings.modelConfig?.primary === "claude-haiku-4-5" || aiSettings.modelConfig?.primary === "claude-opus-4-1") && "Get your API key from https://console.anthropic.com/"}
-                            {(aiSettings.modelConfig?.primary === "gemini-2.5-pro" || aiSettings.modelConfig?.primary === "gemini-2.5-flash") && "Get your API key from https://makersuite.google.com/app/apikey"}
+                            Get your API key from https://platform.openai.com/api-keys
                           </Text>
                         </div>
                       </div>
