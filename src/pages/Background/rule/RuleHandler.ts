@@ -1,4 +1,4 @@
-import lodash from "lodash"
+import debounce from "lodash/debounce"
 import chromeP from "webext-polyfill-kinda"
 
 import type { IExtensionManager } from ".../types/global"
@@ -11,7 +11,7 @@ export class RuleHandler {
    *
    */
   constructor() {
-    this.debounceDo = lodash.debounce(this.do, 20)
+    this.debounceDo = debounce(this.do.bind(this), 20)
   }
 
   /**

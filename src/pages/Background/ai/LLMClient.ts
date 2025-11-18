@@ -51,9 +51,22 @@ export class LLMClient {
   ): Promise<string> {
     const endpoint = config.endpoint || "https://api.openai.com/v1/chat/completions"
     
+    // Validate API key format
+    if (!config.apiKey || config.apiKey.trim().length === 0) {
+      throw new Error("API key is required but not provided")
+    }
+    
+    // Basic API key format validation (OpenAI keys start with sk-)
+    if (!config.apiKey.startsWith("sk-") && config.apiKey.length < 20) {
+      logger().warn(`[LLM] API key format may be invalid (expected to start with 'sk-')`)
+    }
+    
     // Use the model name directly from config
     // gpt-5-2025-08-07 is the current OpenAI model
     const apiModelName = config.primary
+    
+    logger().info(`[LLM] Making request to: ${endpoint}`)
+    logger().debug(`[LLM] Using model: ${apiModelName}`)
     
     const messages: Array<{ role: string; content: string }> = []
     if (systemPrompt) {
@@ -78,25 +91,44 @@ export class LLMClient {
       body.max_completion_tokens = 2000
     }
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${config.apiKey}`
-      },
-      body: JSON.stringify(body)
-    })
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify(body)
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      logger().error(`[LLM] OpenAI API error: ${response.status}`, errorText)
-      throw new Error(`OpenAI API error: ${response.status} ${errorText}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        logger().error(`[LLM] OpenAI API error: ${response.status}`, errorText)
+        throw new Error(`OpenAI API error: ${response.status} ${errorText}`)
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || ""
+      logger().debug(`[LLM] OpenAI response length: ${content.length} chars`)
+      return content
+    } catch (error: any) {
+      // Enhanced error handling for network errors
+      if (error.name === "TypeError" && error.message.includes("fetch")) {
+        logger().error(`[LLM] Network error calling ${endpoint}`, error)
+        throw new Error(
+          `Failed to connect to OpenAI API at ${endpoint}. ` +
+          `Please check your internet connection and ensure the endpoint URL is correct. ` +
+          `Error: ${error.message}`
+        )
+      }
+      // Re-throw if it's already a formatted error
+      if (error.message && error.message.includes("OpenAI API error")) {
+        throw error
+      }
+      // Otherwise wrap the error
+      logger().error(`[LLM] Unexpected error calling OpenAI API`, error)
+      throw new Error(`Failed to call OpenAI API: ${error.message || error}`)
     }
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content || ""
-    logger().debug(`[LLM] OpenAI response length: ${content.length} chars`)
-    return content
   }
 
 

@@ -8,7 +8,7 @@ const createAI = async (EM: IExtensionManager) => {
     throw new Error("Extension repo is required for AI service")
   }
 
-  const knowledgeBase = new ExtensionKnowledgeBase(EM.Extension.repo)
+  const knowledgeBase = new ExtensionKnowledgeBase(EM.Extension.repo, EM)
   
   // Get external metadata URL from config (if set)
   const externalUrl = await EM.LocalOptions.getValue<string>("aiExternalMetadataUrl")

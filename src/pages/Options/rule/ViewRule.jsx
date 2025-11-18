@@ -12,8 +12,6 @@ import MatchView from "./view/MatchView"
 import OperationView from "./view/OperationView"
 import TargetView from "./view/TargetView"
 
-const { Map } = require("immutable")
-
 const { Column } = Table
 
 const ViewRule = memo((props) => {
@@ -34,7 +32,7 @@ const ViewRule = memo((props) => {
   const [records, setRecords] = useState()
   useEffect(() => {
     if (configs) {
-      setRecords(configs.map((c, index) => Map(c).set("index", index).toJS()))
+      setRecords(configs.map((c, index) => ({ ...c, index })))
     }
   }, [configs])
 

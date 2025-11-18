@@ -1,4 +1,3 @@
-import _ from "lodash"
 import LZString from "lz-string"
 
 /**
@@ -62,7 +61,7 @@ function parseShareText(content) {
     return null
   }
   text = text.substring(0, index)
-  text = _.trim(text, "-")
+  text = text.replace(/^-+|-+$/g, "")
   text = text.trim()
 
   text = LZString.decompressFromBase64(text)
@@ -75,7 +74,7 @@ function parseShareText(content) {
       }
 
       const items = line.split("#><#").map((i) => {
-        return _.trim(i, "#>")
+        return i.replace(/^#+|#+$/g, "")
       })
 
       if (items.length < 3) {

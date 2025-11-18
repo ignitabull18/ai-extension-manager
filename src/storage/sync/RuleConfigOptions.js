@@ -1,4 +1,3 @@
-import { List, Map } from "immutable"
 import { nanoid } from "nanoid"
 
 import ConvertRuleToV2 from ".../pages/Background/rule/RuleConverter"
@@ -43,7 +42,7 @@ export const RuleConfigOptions = {
       throw Error(`cannot find config id is ${config.id})`)
     }
 
-    const newConfig = Map(exist).set("id", nanoid()).toJS()
+    const newConfig = { ...exist, id: nanoid() }
     configs.splice(configs.indexOf(exist), 0, newConfig)
 
     await SyncOptionsStorage.set({ ruleConfig: configs })

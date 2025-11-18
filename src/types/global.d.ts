@@ -16,6 +16,7 @@ declare interface IExtensionManager {
     items: chrome.management.ExtensionInfo[]
     service: ExtensionService
     repo?: ExtensionRepo
+    getAllExtensions?: () => Promise<chrome.management.ExtensionInfo[]>
   }
   History: History
   EventCache: EventCache

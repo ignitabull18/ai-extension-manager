@@ -55,4 +55,32 @@ export const GroupNavStyle = styled.div`
   .tab-container h3 {
     flex-grow: 1;
   }
+
+  .item-container {
+    position: relative;
+    margin-bottom: 10px;
+  }
+
+  .drag-handle {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: grab;
+    padding: 4px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    svg {
+      fill: currentColor;
+    }
+  }
 `

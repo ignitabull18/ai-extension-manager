@@ -1,4 +1,5 @@
 import { listen } from ".../utils/messageHelper"
+import logger from ".../utils/logger"
 import { createManualChangeGroupHandler } from "./historyMessage"
 import { createCurrentSceneChangedHandler, createRuleConfigChangedHandler } from "./ruleMessage"
 import {
@@ -32,77 +33,133 @@ const createMessageHandler = (EM) => {
       sendResponse
     }
 
-    createRuleMessage(EM.Rule.handler, ctx)
-    createHistoryMessage(EM, ctx)
-    createAIMessage(EM, ctx)
+    // Parse message ID first to route appropriately
+    let msgId = null
+    try {
+      const msg = JSON.parse(message)
+      msgId = msg.id
+    } catch (e) {
+      // Invalid message format
+      return false
+    }
+
+    // Route to appropriate handler based on message ID
+    // Return true immediately to keep port open for async handlers
+    if (msgId?.startsWith("ai-")) {
+      // AI messages - handled by createAIMessage
+      createAIMessage(EM, ctx).catch((error) => {
+        logger().error("[Message] Error in AI message handler", error)
+        ctx.sendResponse({
+          state: "error",
+          error: error.message || "Unknown error"
+        })
+      })
+      return true // Keep port open for async response
+    } else if (msgId === "current-scene-changed" || msgId === "rule-config-changed") {
+      // Rule messages
+      createRuleMessage(EM.Rule.handler, ctx).catch((error) => {
+        logger().error("[Message] Error in rule message handler", error)
+      })
+      return true // Keep port open for async response
+    } else if (msgId === "manual-change-group") {
+      // History messages
+      createHistoryMessage(EM, ctx).catch((error) => {
+        logger().error("[Message] Error in history message handler", error)
+      })
+      return true // Keep port open for async response
+    } else {
+      // Unknown message - try all handlers (fallback for backwards compatibility)
+      createRuleMessage(EM.Rule.handler, ctx).catch((error) => {
+        logger().error("[Message] Error in rule message handler", error)
+      })
+      createHistoryMessage(EM, ctx).catch((error) => {
+        logger().error("[Message] Error in history message handler", error)
+      })
+      createAIMessage(EM, ctx).catch((error) => {
+        logger().error("[Message] Error in AI message handler", error)
+      })
+      return true // Keep port open for async response
+    }
   })
 }
 
 /*
  * 规则处理相关的 message
  */
-const createRuleMessage = (handler, ctx) => {
+const createRuleMessage = async (handler, ctx) => {
   // 当前情况模式发生变更
-  listen("current-scene-changed", ctx, createCurrentSceneChangedHandler(handler))
+  if (await listen("current-scene-changed", ctx, createCurrentSceneChangedHandler(handler))) return
 
   // 规则配置发生变更
-  listen("rule-config-changed", ctx, createRuleConfigChangedHandler(handler))
+  if (await listen("rule-config-changed", ctx, createRuleConfigChangedHandler(handler))) return
 
-  ctx.sendResponse({ state: "success" })
+  // If no handler matched, don't send a response (rule messages may not need responses)
+  // Note: Handlers above send their own responses via ctx.sendResponse()
 }
 
 /**
  * 处理历史记录相关的 message
  */
-const createHistoryMessage = (EM, ctx) => {
-  listen("manual-change-group", ctx, createManualChangeGroupHandler(EM))
+const createHistoryMessage = async (EM, ctx) => {
+  if (await listen("manual-change-group", ctx, createManualChangeGroupHandler(EM))) return
 
-  ctx.sendResponse({ state: "success" })
+  // If no handler matched, don't send a response (history messages may not need responses)
+  // Note: Handler above sends its own response via ctx.sendResponse()
 }
 
 /**
  * 处理 AI 相关的 message
  */
-const createAIMessage = (EM, ctx) => {
+const createAIMessage = async (EM, ctx) => {
   if (!EM.AI) {
+    // AI not initialized - send error response
+    ctx.sendResponse({
+      state: "error",
+      error: "AI service is not available. Please reload the extension."
+    })
     return
   }
 
+  // Try each handler until one matches (listen returns true when matched)
   // Process AI intent
-  listen("ai-process-intent", ctx, createAIIntentHandler(EM))
+  if (await listen("ai-process-intent", ctx, createAIIntentHandler(EM))) return
 
   // Execute AI action plan
-  listen("ai-execute-action", ctx, createAIExecuteHandler(EM))
+  if (await listen("ai-execute-action", ctx, createAIExecuteHandler(EM))) return
 
   // Get recent AI intents
-  listen("ai-get-intents", ctx, createAIGetIntentsHandler(EM))
+  if (await listen("ai-get-intents", ctx, createAIGetIntentsHandler(EM))) return
 
   // Update extension knowledge
-  listen("ai-update-knowledge", ctx, createAIUpdateKnowledgeHandler(EM))
+  if (await listen("ai-update-knowledge", ctx, createAIUpdateKnowledgeHandler(EM))) return
 
   // Suggest groups for organizing extensions
-  listen("ai-suggest-groups", ctx, createAISuggestGroupsHandler(EM))
+  if (await listen("ai-suggest-groups", ctx, createAISuggestGroupsHandler(EM))) return
 
   // Apply suggested groups
-  listen("ai-apply-groups", ctx, createAIApplyGroupsHandler(EM))
+  if (await listen("ai-apply-groups", ctx, createAIApplyGroupsHandler(EM))) return
 
   // Refresh enrichment for extensions
-  listen("ai-refresh-enrichment", ctx, createAIRefreshEnrichmentHandler(EM))
+  if (await listen("ai-refresh-enrichment", ctx, createAIRefreshEnrichmentHandler(EM))) return
 
   // Get AI settings
-  listen("ai-get-settings", ctx, createAIGetSettingsHandler(EM))
+  if (await listen("ai-get-settings", ctx, createAIGetSettingsHandler(EM))) return
 
   // Set AI settings
-  listen("ai-set-settings", ctx, createAISetSettingsHandler(EM))
+  if (await listen("ai-set-settings", ctx, createAISetSettingsHandler(EM))) return
 
   // Enrich extensions (all or selected)
-  listen("ai-enrich-extensions", ctx, createAIEnrichExtensionsHandler(EM))
+  if (await listen("ai-enrich-extensions", ctx, createAIEnrichExtensionsHandler(EM))) return
 
   // Get enrichment status for extensions
-  listen("ai-get-enrichment-status", ctx, createAIGetEnrichmentStatusHandler(EM))
+  if (await listen("ai-get-enrichment-status", ctx, createAIGetEnrichmentStatusHandler(EM))) return
 
-  // Note: Each handler above sends its own response via ctx.sendResponse()
-  // Do not send a response here as it would interfere with async handlers
+  // If no handler matched, send error response
+  // This shouldn't happen for valid AI messages, but handle it gracefully
+  ctx.sendResponse({
+    state: "error",
+    error: `Unknown AI message type: ${ctx.id || "unknown"}`
+  })
 }
 
 export default createMessageHandler

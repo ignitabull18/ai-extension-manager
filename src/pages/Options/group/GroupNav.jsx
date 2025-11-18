@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react"
 
 import { DeleteFilled, EditFilled, PlusOutlined } from "@ant-design/icons"
-import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd"
+import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Popconfirm, message } from "antd"
 import classNames from "classnames"
 
@@ -100,84 +102,106 @@ function GroupNav({
     messageApi.info(`delete ${group.name}`)
   }
 
-  const handleDrop = (droppedItem) => {
-    if (!droppedItem.destination) return
-    if (droppedItem.droppableId === "fixed") {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  )
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) {
       return
     }
 
-    var updatedList = [...groupItems]
-    // Remove dragged item
-    const [reorderedItem] = updatedList.splice(droppedItem.source.index, 1)
-    // Add dropped item
-    updatedList.splice(droppedItem.destination.index, 0, reorderedItem)
-    // Update State
-    setGroupItems(updatedList)
+    // Prevent dragging fixed group
+    if (active.id === "fixed" || over.id === "fixed") {
+      return
+    }
 
-    onGroupOrdered?.(updatedList)
+    const oldIndex = groupItems.findIndex((item) => item.id === active.id)
+    const newIndex = groupItems.findIndex((item) => item.id === over.id)
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const updatedList = arrayMove(groupItems, oldIndex, newIndex)
+      setGroupItems(updatedList)
+      onGroupOrdered?.(updatedList)
+    }
+  }
+
+  // Sortable Group Item Component
+  const SortableGroupItem = ({ group }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: group.id,
+      disabled: group.id === "fixed" || storage.helper.isSpecialGroup(group)
+    })
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1
+    }
+
+    return (
+      <div className="item-container" ref={setNodeRef} style={style}>
+        <div onClick={(e) => onGroupTabClick(e, group)}>
+          <div
+            className={classNames([
+              "tab-container",
+              { "selected-group-item": group.id === current?.id }
+            ])}>
+            <h3>{group.name}</h3>
+
+            {storage.helper.isSpecialGroup(group) || (
+              <div className="tab-operation">
+                <EditFilled
+                  onClick={(e) => onEditGroupClick(e, group)}
+                  className="tab-operation-item"
+                />
+
+                <Popconfirm
+                  className="tab-operation-item"
+                  title={getLang("group_delete_title")}
+                  description={getLang("group_delete_confirm", group.name)}
+                  onConfirm={(e) => onDeleteGroupClick(e, group)}
+                  onCancel={(e) => e.stopPropagation()}
+                  okText="Yes"
+                  cancelText="Cancel"
+                  onClick={(e) => e.stopPropagation()}>
+                  <DeleteFilled />
+                </Popconfirm>
+              </div>
+            )}
+          </div>
+        </div>
+        {!storage.helper.isSpecialGroup(group) && group.id !== "fixed" && (
+          <div className="drag-handle" {...attributes} {...listeners}>
+            <svg viewBox="0 0 20 20" width="12">
+              <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"></path>
+            </svg>
+          </div>
+        )}
+      </div>
+    )
   }
 
   // 单个 Group Item 的显示
   const buildGroupItemView = (group) => {
-    return (
-      <div onClick={(e) => onGroupTabClick(e, group)}>
-        <div
-          className={classNames([
-            "tab-container",
-            { "selected-group-item": group.id === current?.id }
-          ])}>
-          <h3>{group.name}</h3>
-
-          {storage.helper.isSpecialGroup(group) || (
-            <div className="tab-operation">
-              <EditFilled
-                onClick={(e) => onEditGroupClick(e, group)}
-                className="tab-operation-item"
-              />
-
-              <Popconfirm
-                className="tab-operation-item"
-                title={getLang("group_delete_title")}
-                description={getLang("group_delete_confirm", group.name)}
-                onConfirm={(e) => onDeleteGroupClick(e, group)}
-                onCancel={(e) => e.stopPropagation()}
-                okText="Yes"
-                cancelText="Cancel"
-                onClick={(e) => e.stopPropagation()}>
-                <DeleteFilled />
-              </Popconfirm>
-            </div>
-          )}
-        </div>
-      </div>
-    )
+    return <SortableGroupItem key={group.id} group={group} />
   }
 
   return (
     <GroupNavStyle>
       {contextHolder}
-      <DragDropContext onDragEnd={handleDrop}>
-        <Droppable droppableId="group-droppable">
-          {(provided, snapshot) => (
-            <div {...provided.droppableProps} ref={provided.innerRef}>
-              {groupItems.map((group, index) => (
-                <Draggable key={group.id} draggableId={group.id} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      className="item-container"
-                      ref={provided.innerRef}
-                      {...provided.dragHandleProps}
-                      {...provided.draggableProps}>
-                      {buildGroupItemView(group)}
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <SortableContext items={groupItems.map((g) => g.id)}>
+          <div>
+            {groupItems.map((group) => buildGroupItemView(group))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <div
         className={classNames([

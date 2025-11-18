@@ -3,7 +3,7 @@ import React, { Suspense, lazy, memo, useEffect, useRef, useState } from "react"
 import { MenuOutlined, SearchOutlined, SettingOutlined } from "@ant-design/icons"
 import Icon from "@ant-design/icons/lib/components/Icon"
 import { Space, message } from "antd"
-import _ from "lodash"
+import throttle from "lodash/throttle"
 
 import EdgeIcon from ".../assets/img/Microsoft_Store.svg"
 import ChromeWebStoreIcon from ".../assets/img/chrome-web-store-icon.svg"
@@ -97,7 +97,7 @@ const Header = memo((props) => {
     throttleSearch(text)
   }
 
-  const throttleSearch = _.throttle((text) => {
+  const throttleSearch = throttle((text) => {
     onSearch?.(text)
   }, 500)
 

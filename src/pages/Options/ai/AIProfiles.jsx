@@ -223,10 +223,19 @@ function AIProfiles() {
       // Only include API key if a new one was provided (not empty and not masked)
       if (apiKeyValue && apiKeyValue.trim() && !apiKeyValue.startsWith("***")) {
         settingsToSave.modelConfig.apiKey = apiKeyValue.trim()
+      } else {
+        // If no new API key provided, explicitly exclude it from the save
+        // This prevents sending masked keys back to the backend
+        delete settingsToSave.modelConfig.apiKey
       }
-      // If apiKeyValue is empty, don't include it - backend will keep existing key
       
       const response = await sendMessage("ai-set-settings", { settings: settingsToSave })
+      if (!response) {
+        message.error("No response from background script. Please check the console for errors.")
+        console.error("No response received from ai-set-settings")
+        return
+      }
+      
       if (response?.state === "success") {
         message.success("Settings saved successfully")
         // Clear the API key input field
@@ -234,11 +243,13 @@ function AIProfiles() {
         // Reload to get masked API key
         await loadAISettings()
       } else {
-        message.error(response?.error || "Failed to save settings")
+        const errorMsg = response?.error || "Failed to save settings"
+        console.error("Failed to save settings:", errorMsg, response)
+        message.error(errorMsg)
       }
     } catch (error) {
       console.error("Failed to save settings", error)
-      message.error("Failed to save settings")
+      message.error(`Failed to save settings: ${error.message || error}`)
     } finally {
       setSettingsLoading(false)
     }

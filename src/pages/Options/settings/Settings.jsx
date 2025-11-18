@@ -2,7 +2,6 @@ import React, { memo, useCallback, useEffect, useState } from "react"
 
 import { QuestionCircleOutlined } from "@ant-design/icons"
 import { Button, Popconfirm, Radio, Slider, Switch, Tooltip, message } from "antd"
-import { fromJS } from "immutable"
 
 import storage from ".../storage/sync"
 import { getLang } from ".../utils/utils"
@@ -33,7 +32,7 @@ function Settings() {
     settingHandler?.(value)
     storage.options.getAll().then((options) => {
       // 将新配置，合并到已经存在的 setting中，然后更新到 storage 中
-      const setting = fromJS(options.setting).set(optionKey, value).toJS()
+      const setting = { ...options.setting, [optionKey]: value }
       storage.options.set({ setting: setting })
     })
   }, [])

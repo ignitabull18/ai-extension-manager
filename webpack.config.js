@@ -5,9 +5,8 @@ var webpack = require("webpack"),
   CopyWebpackPlugin = require("copy-webpack-plugin"),
   HtmlWebpackPlugin = require("html-webpack-plugin"),
   TerserPlugin = require("terser-webpack-plugin")
-var { CleanWebpackPlugin } = require("clean-webpack-plugin")
 var ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin")
-var ReactRefreshTypeScript = require("react-refresh-typescript")
+var { EsbuildPlugin } = require("esbuild-loader")
 
 const ASSET_PATH = process.env.ASSET_PATH || "/"
 
@@ -35,6 +34,9 @@ var options = {
   },
   chromeExtensionBoilerplate: {
     notHotReload: ["background", "contentScript", "devtools"]
+  },
+  cache: {
+    type: "filesystem"
   },
   output: {
     filename: "[name].bundle.js",
@@ -82,34 +84,25 @@ var options = {
         exclude: /node_modules/
       },
       {
-        test: /\.(ts|tsx)$/,
+        test: /\.(ts|tsx|js|jsx)$/,
         exclude: /node_modules/,
         use: [
           {
-            loader: require.resolve("ts-loader"),
+            loader: "esbuild-loader",
             options: {
-              getCustomTransformers: () => ({
-                before: [isDevelopment && ReactRefreshTypeScript()].filter(Boolean)
-              }),
-              transpileOnly: isDevelopment
+              loader: "tsx",
+              target: "es2015",
+              jsx: "automatic"
             }
-          }
-        ]
-      },
-      {
-        test: /\.(js|jsx)$/,
-        use: [
-          {
-            loader: "source-map-loader"
           },
-          {
-            loader: require.resolve("babel-loader"),
-            options: {
-              plugins: [isDevelopment && require.resolve("react-refresh/babel")].filter(Boolean)
-            }
-          }
-        ],
-        exclude: /node_modules/
+          ...(isDevelopment
+            ? [
+                {
+                  loader: "source-map-loader"
+                }
+              ]
+            : [])
+        ]
       }
     ]
   },
@@ -121,7 +114,6 @@ var options = {
   },
   plugins: [
     isDevelopment && new ReactRefreshWebpackPlugin({ overlay: false }),
-    new CleanWebpackPlugin({ verbose: false }),
     new webpack.ProgressPlugin(),
     // expose and write the allowed env vars on the compiled bundle
     new webpack.EnvironmentPlugin(["NODE_ENV"]),
@@ -208,8 +200,9 @@ if (env.NODE_ENV === "development") {
   options.optimization = {
     minimize: true,
     minimizer: [
-      new TerserPlugin({
-        extractComments: false
+      new EsbuildPlugin({
+        target: "es2015",
+        css: false
       })
     ]
   }

@@ -56,8 +56,10 @@ export class AIAssistantService {
     const tabs = context?.activeTabs || await chromeP.tabs.query({ active: true })
     const activeTab = tabs.find((t) => t.active) || tabs[0]
     
-    // Get all extensions with knowledge
-    const allExtensions = await chromeP.management.getAll()
+    // Get all extensions with knowledge (use cached method if available)
+    const allExtensions = this.EM.Extension?.getAllExtensions
+      ? await this.EM.Extension.getAllExtensions()
+      : await chromeP.management.getAll()
     const knowledgeMap = new Map<string, ai.IExtensionKnowledge>()
     
     for (const ext of allExtensions) {
@@ -326,8 +328,10 @@ Based on the user's task, which extensions should be enabled or disabled? Return
     logger().info("[AI] Suggesting groups for extensions")
 
     try {
-      // Get all extensions
-      const allExtensions = await chromeP.management.getAll()
+      // Get all extensions (use cached method if available)
+      const allExtensions = this.EM.Extension?.getAllExtensions
+        ? await this.EM.Extension.getAllExtensions()
+        : await chromeP.management.getAll()
       const self = await chromeP.management.getSelf()
       
       // Filter extensions

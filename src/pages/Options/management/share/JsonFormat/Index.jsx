@@ -1,15 +1,36 @@
-import React, { forwardRef, memo, useEffect, useImperativeHandle, useState } from "react"
-import { JsonView, allExpanded, defaultStyles } from "react-json-view-lite"
-import "react-json-view-lite/dist/index.css"
+import React, { forwardRef, lazy, memo, Suspense, useEffect, useImperativeHandle, useState } from "react"
 
-import { Input } from "antd"
+import { Input, Spin } from "antd"
 import styled from "styled-components"
 
 const { TextArea } = Input
+
+// Lazy load JsonView component and its utilities
+const JsonViewLazy = lazy(async () => {
+  const [module, css] = await Promise.all([
+    import("react-json-view-lite"),
+    import("react-json-view-lite/dist/index.css")
+  ])
+  return { default: module.JsonView }
+})
+
+// Pre-load utilities (they're small)
+let jsonViewUtils = null
+const getJsonViewUtils = async () => {
+  if (!jsonViewUtils) {
+    const module = await import("react-json-view-lite")
+    jsonViewUtils = {
+      allExpanded: module.allExpanded,
+      defaultStyles: module.defaultStyles
+    }
+  }
+  return jsonViewUtils
+}
 // exportRange: ["alias", "remark"]
 
 const Index = ({ extensions, options, exportRange, targetExtensionIds }, ref) => {
   const [records, setRecords] = useState([])
+  const [jsonViewUtils, setJsonViewUtils] = useState(null)
 
   useImperativeHandle(ref, () => ({
     getValue: () => {
@@ -19,6 +40,10 @@ const Index = ({ extensions, options, exportRange, targetExtensionIds }, ref) =>
       return JSON.stringify(records, null, 2)
     }
   }))
+
+  useEffect(() => {
+    getJsonViewUtils().then(setJsonViewUtils)
+  }, [])
 
   useEffect(() => {
     if (!extensions || extensions.length === 0) {
@@ -56,17 +81,27 @@ const Index = ({ extensions, options, exportRange, targetExtensionIds }, ref) =>
     return null
   }
 
+  if (!jsonViewUtils) {
+    return (
+      <Style>
+        <Spin style={{ display: "block", textAlign: "center", padding: "20px" }} />
+      </Style>
+    )
+  }
+
   return (
     <Style>
-      <JsonView
-        style={{
-          ...defaultStyles,
-          container: "json-view-container",
-          undefinedValue: "json-view-undefined"
-        }}
-        data={records}
-        shouldExpandNode={allExpanded}
-      />
+      <Suspense fallback={<Spin style={{ display: "block", textAlign: "center", padding: "20px" }} />}>
+        <JsonViewLazy
+          style={{
+            ...jsonViewUtils.defaultStyles,
+            container: "json-view-container",
+            undefinedValue: "json-view-undefined"
+          }}
+          data={records}
+          shouldExpandNode={jsonViewUtils.allExpanded}
+        />
+      </Suspense>
     </Style>
   )
 }

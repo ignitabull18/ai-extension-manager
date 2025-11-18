@@ -8,7 +8,6 @@ import {
   ThunderboltOutlined
 } from "@ant-design/icons"
 import { Button, Dropdown, Radio, Space, message } from "antd"
-import lodash from "lodash"
 
 import { getLang } from ".../utils/utils"
 import { ruleEmitBuilder } from "../emitter.js"
@@ -148,9 +147,7 @@ const MatchRule = ({ options, config }, ref) => {
 
   // 移除触发条件
   const onTriggerRemove = (triggerKey) => {
-    const copy = [...selectTriggerKeys]
-    lodash.remove(copy, (k) => k === triggerKey)
-    setSelectTriggers(copy)
+    setSelectTriggers(selectTriggerKeys.filter((k) => k !== triggerKey))
   }
 
   // 触发条件之间的组合关系

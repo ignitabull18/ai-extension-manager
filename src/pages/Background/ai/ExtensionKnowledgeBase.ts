@@ -1,6 +1,7 @@
 import chromeP from "webext-polyfill-kinda"
 import localforage from "localforage"
 
+import type { IExtensionManager } from ".../types/global"
 import { ExtensionRepo } from "../extension/ExtensionRepo"
 import { ExtensionRecord } from "../extension/ExtensionRecord"
 import { LLMClient } from "./LLMClient"
@@ -14,9 +15,11 @@ export class ExtensionKnowledgeBase {
   private forage: LocalForage
   private repo: ExtensionRepo
   private llmClient: LLMClient
+  private EM?: IExtensionManager
 
-  constructor(repo: ExtensionRepo) {
+  constructor(repo: ExtensionRepo, EM?: IExtensionManager) {
     this.repo = repo
+    this.EM = EM
     this.llmClient = new LLMClient()
     this.forage = localforage.createInstance({
       driver: localforage.INDEXEDDB,
@@ -124,7 +127,10 @@ export class ExtensionKnowledgeBase {
     logger().info("[AI] Starting knowledge refresh for all extensions")
     
     try {
-      const allExtensions = await chromeP.management.getAll()
+      // Use cached method if available, otherwise fall back to direct call
+      const allExtensions = this.EM?.Extension?.getAllExtensions
+        ? await this.EM.Extension.getAllExtensions()
+        : await chromeP.management.getAll()
       let updated = 0
       let created = 0
 
@@ -455,7 +461,10 @@ Generate enriched metadata for this extension. Return only valid JSON.`
     logger().info("[AI] Starting knowledge refresh with enrichment")
     
     try {
-      const allExtensions = await chromeP.management.getAll()
+      // Use cached method if available, otherwise fall back to direct call
+      const allExtensions = this.EM?.Extension?.getAllExtensions
+        ? await this.EM.Extension.getAllExtensions()
+        : await chromeP.management.getAll()
       let enriched = 0
 
       for (const ext of allExtensions) {
@@ -540,7 +549,10 @@ Generate enriched metadata for this extension. Return only valid JSON.`
       
       if (extensionIds.length === 0) {
         // Enrich all extensions
-        extensionsToEnrich = await chromeP.management.getAll()
+        // Use cached method if available, otherwise fall back to direct call
+        extensionsToEnrich = this.EM?.Extension?.getAllExtensions
+          ? await this.EM.Extension.getAllExtensions()
+          : await chromeP.management.getAll()
       } else {
         // Enrich only specified extensions
         extensionsToEnrich = []

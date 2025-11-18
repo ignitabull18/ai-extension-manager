@@ -1,13 +1,13 @@
 import React from "react"
 
-import _ from "lodash"
+import debounce from "lodash/debounce"
 
 // [React Hooks useEffect多个依赖批量操作 - 掘金](https://juejin.cn/post/6994085055559630879 )
 
 export function useDebounce(fn, wait = 1000) {
   const func = React.useRef(fn)
   func.current = fn
-  const debounceWrapper = React.useRef(_.debounce((args) => func.current?.(args), wait))
+  const debounceWrapper = React.useRef(debounce((args) => func.current?.(args), wait))
   return debounceWrapper.current
 }
 

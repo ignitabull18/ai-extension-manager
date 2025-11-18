@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Build System Optimization**: Migrated from ts-loader + babel-loader to esbuild-loader for significantly faster builds
+  - Replaced dual loader chain with single high-performance esbuild-loader for TS/JS/JSX/TSX
+  - Added filesystem caching to webpack for faster rebuilds
+  - Moved type checking to separate `npm run lint:types` script (tsc --noEmit)
+  - Removed CleanWebpackPlugin (using webpack's built-in output.clean instead)
+  - Restricted source-map-loader to development only
+  - Made zipping optional (use `npm run build:package` to create zip files)
+  - Switched production minification to esbuild (faster than Terser)
+- **Bundle Size Optimization**: Reduced bundle sizes through dependency optimization and code splitting
+  - Replaced full lodash imports with modular imports (lodash/debounce, lodash/throttle) or native alternatives
+  - Removed immutable.js dependency (replaced with native JavaScript spread operators)
+  - Unified drag-and-drop libraries: refactored GroupNav to use @dnd-kit and removed @hello-pangea/dnd
+  - Implemented aggressive code-splitting: lazy-loaded heavy routes (AI, History, Management, Rules) in Options page
+  - Lazy-loaded react-json-view-lite component in JSON share view
+  - All changes preserve existing functionality while reducing initial bundle size
+- **Runtime Performance**: Added caching for chrome.management.getAll() calls
+  - Implemented 5-second TTL cache in ExtensionService with automatic invalidation on extension events
+  - Updated AI services to use cached extension lists when available
+  - Reduces redundant API calls during AI operations and grouping
+- **Performance Documentation**: Added performance testing guide to DEBUG.md
+  - Documented bundle size analysis workflow
+  - Added Chrome Extension performance best practices
+  - Included testing procedures for validating optimizations
+
+### Fixed
+- **AI Settings API Key Save Issue**: Fixed message port closing before async handlers could respond
+  - Updated `listen` function in `messageHelper.js` to properly await async callbacks and catch errors
+  - Fixed Chrome message listener to return `true` synchronously (removed `async` from listener function) to keep port open for async handlers
+  - Changed message handlers to fire-and-forget pattern: handlers run asynchronously while listener returns immediately
+  - Added error handling with `.catch()` to ensure error responses are sent even if handlers fail
+  - Enhanced `listen` function to catch handler errors and send error responses as fallback
+  - Fixed `createAIMessage` to send error response when AI service is not initialized
+  - Added fallback error response in `createAIMessage` for unknown message types
+  - Optimized `createAIMessage` to use early return pattern, stopping handler checks once a match is found
+  - Fixed API key save logic to explicitly exclude masked keys when no new key is provided
+  - This fixes the "message port closed before a response was received" error when saving AI API keys and other AI settings
+- **LLM API Error Handling**: Enhanced error handling for OpenAI API calls
+  - Added API key validation and format checking
+  - Improved error messages for network failures ("Failed to fetch" errors)
+  - Added detailed logging of endpoint URLs and request details
+  - Better error context to help diagnose connection issues
+
 ### Added
 - **AI Enrichment Feature**: New dedicated section in AI Profiles page for generating detailed AI descriptions, use cases, and categories for extensions
   - "Enrich All Extensions" button to generate AI metadata for all installed extensions
@@ -27,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated all documentation to reflect OpenAI-only support
   - Fixed GPT-5 model compatibility: Removed unsupported `temperature` parameter for GPT-5 models (GPT-5 only supports default temperature value)
   - Fixed AI message handler response conflict: Removed premature `sendResponse` call in `createAIMessage` that was interfering with async handlers, causing UI error flashes
+  - Fixed message routing: Refactored message routing to prevent rule/history handlers from sending premature responses to AI messages, ensuring AI enrichment and other AI operations receive proper responses in the UI
   - Enhanced AI suggested groups UI: Added expandable rows to preview group details (description, rationale, extension names) before applying, improved empty state messaging, and preserved suggestions during errors for better exploration experience
 
 ### Added
