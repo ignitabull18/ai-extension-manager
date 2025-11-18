@@ -5,7 +5,7 @@
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/JasonGrass/auto-extension-manager"
+    "url": "https://github.com/ignitabull18/ai-extension-manager"
   },
   "scripts": {
     "build": "node utils/build.chrome.js",

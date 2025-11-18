@@ -20,6 +20,13 @@ A simple way to manage your chrome extensions
 
 🍕 **Special Features**
 
+* **AI Assistant**: Natural language extension management
+  - Describe your task in plain English (e.g., "I'm doing frontend development")
+  - AI intelligently enables/disables relevant extensions based on context
+  - Smart organizing: AI suggests logical extension groups based on functionality
+  - Automatic description enrichment for extensions with missing or poor descriptions
+  - Optional external metadata API integration for enhanced extension knowledge
+
 * Flexible rule customization to automatically enable or disable browser extensions.
 
 Matching conditions: URL / Profile / Operating system / Time.

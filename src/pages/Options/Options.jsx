@@ -7,6 +7,7 @@ import "./Options.css"
 import "./index.css"
 
 import About from "./about/About.jsx"
+import AIProfiles from "./ai/AIProfiles.jsx"
 import GroupManagement from "./group/IndexGroup.jsx"
 import ExtensionHistoryIndex from "./history/ExtensionHistoryIndex"
 import ExtensionManageIndex from "./management/ExtensionManageIndex.jsx"
@@ -45,6 +46,7 @@ function Options() {
             </Route>
             <Route path="/rule" element={<RuleSetting />} />
             <Route path="/history" element={<ExtensionHistoryIndex />} />
+            <Route path="/ai" element={<AIProfiles />} />
           </Routes>
         </ConfigProvider>
       </div>

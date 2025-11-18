@@ -6,6 +6,7 @@ import {
   FolderOpenFilled,
   FormatPainterFilled,
   ReconciliationFilled,
+  RobotOutlined,
   ThunderboltFilled,
   ToolFilled
 } from "@ant-design/icons"
@@ -53,6 +54,11 @@ function Navigation() {
       <NavLink to="/history" className="nav-item" onClick={() => reportEvent("history")}>
         <ReconciliationFilled />
         <span className="text">{getLang("history_title")}</span>
+      </NavLink>
+
+      <NavLink to="/ai" className="nav-item" onClick={() => reportEvent("ai")}>
+        <RobotOutlined />
+        <span className="text">AI Assistant</span>
       </NavLink>
     </NavigationStyle>
   )

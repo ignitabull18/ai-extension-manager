@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_ext_name__",
   "description": "__MSG_ext_desc__",
-  "homepage_url": "https://github.com/JasonGrass/auto-extension-manager",
+  "homepage_url": "https://github.com/ignitabull18/ai-extension-manager",
   "icons": {
     "32": "icon-32.png",
     "48": "icon-48.png",
@@ -36,5 +36,9 @@
     "management",
     "storage",
     "tabs"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
   ]
 }

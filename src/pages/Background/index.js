@@ -5,6 +5,7 @@ import createExtension from "./extension"
 import createHistory from "./history"
 import createMessageHandler from "./message/messageIndex.js"
 import createRule from "./rule"
+import createAI from "./ai"
 
 console.log(`[Extension Manager] Background Run. ${new Date().toLocaleString()}`)
 
@@ -33,6 +34,14 @@ chrome.runtime.onInstalled.addListener((info) => {
   EM.Extension = await createExtension(EM)
 
   EM.History = await createHistory(EM)
+
+  // Initialize AI assistant (non-blocking)
+  try {
+    EM.AI = await createAI(EM)
+  } catch (error) {
+    logger().warn("[AI] Failed to initialize AI assistant", error)
+    EM.AI = null
+  }
 
   createMessageHandler(EM)
 })()

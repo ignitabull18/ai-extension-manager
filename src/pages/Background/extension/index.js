@@ -13,7 +13,8 @@ const createExtension = async (EM) => {
 
   return {
     items: exts,
-    service: service
+    service: service,
+    repo: repo
   }
 }
 
