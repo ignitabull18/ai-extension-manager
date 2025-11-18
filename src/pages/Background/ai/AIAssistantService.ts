@@ -274,8 +274,8 @@ Based on the user's task, which extensions should be enabled or disabled? Return
   public async getModelConfig(): Promise<ai.IAIModelConfig> {
     const config = await this.EM.LocalOptions.getValue<ai.IAIModelConfig>("aiModelConfig")
     return config || {
-      primary: "gpt-5.1",
-      fallback: [], // gpt-5.1-nano doesn't exist, so no fallback
+      primary: "gpt-5-2025-08-07",
+      fallback: [], // No fallback models currently
       enabled: false
     }
   }

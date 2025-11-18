@@ -7,13 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **AI Integration Improvements**: Enhanced OpenAI integration for more reliable JSON parsing
+  - Updated AI model configuration to use OpenAI `gpt-5-2025-08-07` exclusively (removed references to other providers)
+  - Added structured JSON output request (`response_format: { type: "json_object" }`) to all OpenAI API calls
+  - Enhanced JSON parser to handle common malformed JSON patterns (arrays closed with `}` instead of `]`, trailing commas, etc.)
+  - Improved error logging to show which parsing strategy failed for better debugging
+  - Updated all documentation to reflect OpenAI-only support
+  - Fixed GPT-5 model compatibility: Removed unsupported `temperature` parameter for GPT-5 models (GPT-5 only supports default temperature value)
+
 ### Added
 - **AI-Assisted Extension Management**: Natural language interface for intelligent extension management
   - AI Assistant service (`src/pages/Background/ai/`) that processes natural language intents
   - Extension Knowledge Base that enriches extension metadata with context and use cases
   - AI Profiles page in Options UI (`src/pages/Options/ai/`) for interacting with AI assistant
   - Message handlers for AI intent processing and action execution
-  - Support for configurable LLM models (gpt-5-2025-08-07, claude-sonnet-4-5-20250929, gemini-2.5-pro)
+  - Support for OpenAI gpt-5-2025-08-07 (OpenAI-only support)
   - Extension knowledge tracking with use cases and alias history
   - Recent AI actions history and explainability features
 - **Smart Organizing & Group Creation**: AI-powered extension grouping

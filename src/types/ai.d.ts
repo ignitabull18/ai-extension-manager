@@ -117,12 +117,12 @@ declare namespace ai {
     /**
      * Primary model to use (OpenAI only)
      */
-    primary: "gpt-5.1"
+    primary: "gpt-5-2025-08-07"
 
     /**
      * Fallback models in order (OpenAI only)
      */
-    fallback: Array<"gpt-5.1">
+    fallback: Array<"gpt-5-2025-08-07">
 
     /**
      * API key for the primary model (stored securely)

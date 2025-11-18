@@ -84,7 +84,7 @@ The AI system provides natural language extension management:
 - **Description Enrichment**: Automatically detects and enriches extensions with missing/poor descriptions using AI
 - **ExternalKnowledgeClient**: Optional integration with external metadata APIs for enhanced extension knowledge
 - **Knowledge Refresh**: Automatic nightly refresh of extension knowledge with optional enrichment
-- **AI Models**: Configurable LLM support (gpt-5-2025-08-07, claude-sonnet-4-5-20250929, gemini-2.5-pro)
+- **AI Models**: OpenAI gpt-5-2025-08-07 only (OpenAI-only support)
 - **Fallback**: Rule-based matching when AI is disabled or unavailable
 - **Message Handlers**: 
   - `ai-process-intent` - Process natural language queries

@@ -416,11 +416,8 @@ Here's what you need for a working prototype:
 
 ```javascript
 // background.js
-import Anthropic from "@anthropic-ai/sdk";
-
-const anthropic = new Anthropic({
-  apiKey: "your-api-key"
-});
+// Note: Currently only OpenAI is supported for AI features
+// Non-OpenAI providers (Anthropic, Google, etc.) are not currently supported
 
 // Extension registry
 let extensionRegistry = {};

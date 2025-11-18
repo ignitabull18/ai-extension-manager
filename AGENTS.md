@@ -179,10 +179,10 @@ const EM = {
 - Graceful fallback when external API is unavailable
 
 **AI Models**:
-- Primary: `gpt-5-2025-08-07`
-- Fallbacks: `claude-sonnet-4-5-20250929`, `gemini-2.5-pro`
+- Primary: `gpt-5-2025-08-07` (OpenAI only)
+- Currently uses OpenAI exclusively for all AI features
 - Configurable via LocalOptions (stored securely)
-- Currently uses rule-based fallback when AI is disabled
+- Uses rule-based fallback when AI is disabled or unavailable
 
 **Action Plans**:
 ```typescript

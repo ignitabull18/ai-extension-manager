@@ -313,8 +313,8 @@ export const createAIGetSettingsHandler = (EM) => {
       let modelConfig = await EM.LocalOptions.getValue("aiModelConfig")
       if (!modelConfig) {
         modelConfig = {
-          primary: "gpt-5.1",
-          fallback: [], // gpt-5.1-nano doesn't exist
+          primary: "gpt-5-2025-08-07",
+          fallback: [], // No fallback models currently
           enabled: false,
           apiKey: "",
           endpoint: ""
@@ -329,8 +329,8 @@ export const createAIGetSettingsHandler = (EM) => {
           aiExternalMetadataUrl,
           modelConfig: {
             enabled: modelConfig.enabled || false,
-            primary: modelConfig.primary || "gpt-5.1",
-            fallback: modelConfig.fallback || [], // gpt-5.1-nano doesn't exist
+            primary: modelConfig.primary || "gpt-5-2025-08-07",
+            fallback: modelConfig.fallback || [], // No fallback models currently
             apiKey: modelConfig.apiKey ? "***" + modelConfig.apiKey.slice(-4) : "", // Masked for display
             endpoint: modelConfig.endpoint || ""
           }
@@ -380,8 +380,8 @@ export const createAISetSettingsHandler = (EM) => {
       // Handle model config
       if (settings.modelConfig !== undefined) {
         const currentModelConfig = await EM.LocalOptions.getValue("aiModelConfig") || {
-          primary: "gpt-5.1",
-          fallback: [], // gpt-5.1-nano doesn't exist
+          primary: "gpt-5-2025-08-07",
+          fallback: [], // No fallback models currently
           enabled: false,
           apiKey: "",
           endpoint: ""

@@ -31,8 +31,8 @@ function AIProfiles() {
     aiExternalMetadataUrl: "",
     modelConfig: {
       enabled: false,
-      primary: "gpt-5.1",
-      fallback: [], // gpt-5.1-nano doesn't exist
+      primary: "gpt-5-2025-08-07",
+      fallback: [], // No fallback models currently
       apiKey: "",
       endpoint: ""
     }

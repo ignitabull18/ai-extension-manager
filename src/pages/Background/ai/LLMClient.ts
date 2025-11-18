@@ -2,7 +2,7 @@ import logger from ".../utils/logger"
 
 /**
  * LLM Client for making API calls to OpenAI models
- * Currently supports OpenAI GPT-5.1 series only
+ * Currently supports OpenAI gpt-5-2025-08-07 only
  */
 export class LLMClient {
   /**
@@ -42,7 +42,7 @@ export class LLMClient {
   }
 
   /**
-   * Call OpenAI API (GPT-5.1 or GPT-5.1 Nano)
+   * Call OpenAI API (gpt-5-2025-08-07)
    */
   private async callOpenAI(
     prompt: string,
@@ -52,7 +52,7 @@ export class LLMClient {
     const endpoint = config.endpoint || "https://api.openai.com/v1/chat/completions"
     
     // Use the model name directly from config
-    // GPT-5.1 is the current OpenAI model
+    // gpt-5-2025-08-07 is the current OpenAI model
     const apiModelName = config.primary
     
     const messages: Array<{ role: string; content: string }> = []
@@ -61,18 +61,21 @@ export class LLMClient {
     }
     messages.push({ role: "user", content: prompt })
 
-    // GPT-5.1 models use max_completion_tokens instead of max_tokens
+    // Request structured JSON output for all AI calls
     const body: any = {
       model: apiModelName,
       messages: messages,
-      temperature: 0.7
+      response_format: { type: "json_object" }
     }
     
-    // Use max_completion_tokens for GPT-5.1 series, max_tokens for older models
-    if (apiModelName.startsWith("gpt-5")) {
-      body.max_completion_tokens = 2000
-    } else {
+    // GPT-5 models don't support temperature/top_p parameters - only default values are allowed
+    // For non-GPT-5 models, we can add temperature if needed in the future
+    if (!apiModelName.startsWith("gpt-5")) {
+      body.temperature = 0.7
       body.max_tokens = 2000
+    } else {
+      // GPT-5 series uses max_completion_tokens instead of max_tokens
+      body.max_completion_tokens = 2000
     }
 
     const response = await fetch(endpoint, {
@@ -98,7 +101,7 @@ export class LLMClient {
 
 
   /**
-   * Parse JSON response from LLM (handles markdown code blocks)
+   * Parse JSON response from LLM (handles markdown code blocks and common JSON errors)
    */
   public parseJSONResponse(text: string): any {
     if (!text || text.trim().length === 0) {
@@ -106,15 +109,15 @@ export class LLMClient {
       throw new Error("Empty response from LLM")
     }
 
-    // Try to extract JSON from markdown code blocks (multiple patterns)
-    const patterns = [
+    // Strategy 1: Try to extract JSON from markdown code blocks
+    const markdownPatterns = [
       /```json\s*(\{[\s\S]*?\})\s*```/,
       /```\s*(\{[\s\S]*?\})\s*```/,
       /```json\s*(\[[\s\S]*?\])\s*```/,
       /```\s*(\[[\s\S]*?\])\s*```/
     ]
 
-    for (const pattern of patterns) {
+    for (const pattern of markdownPatterns) {
       const jsonMatch = text.match(pattern)
       if (jsonMatch && jsonMatch[1]) {
         try {
@@ -123,58 +126,75 @@ export class LLMClient {
           return parsed
         } catch (e) {
           logger().warn("[LLM] Failed to parse JSON from markdown block", e)
-          // Continue to try other patterns
+          // Continue to try other strategies
         }
       }
     }
 
-    // Try to find JSON object/array in the text (more flexible)
-    // First try to fix common JSON errors
+    // Strategy 2: Fix common JSON errors and try to parse
     let cleanedText = text.trim()
     
-    // Fix common GPT errors: replace } with ] before closing brace of arrays
-    // Pattern: array items followed by } instead of ]
+    // Fix common errors: arrays closed with } instead of ]
+    // Handle patterns like: }, "categories" or }, "useCases" after array items
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*,\s*"categories")/g, '$1$2]$3')
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*,\s*"category")/g, '$1$2]$3')
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*,\s*"useCases")/g, '$1$2]$3')
+    // Also handle cases without comma: } "categories"
     cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*"categories")/g, '$1$2]$3')
     cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*"category")/g, '$1$2]$3')
     cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*"useCases")/g, '$1$2]$3')
+    // Handle closing brace after array: } followed by newline and "categories"
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*\n\s*"categories")/g, '$1$2]$3')
+    cleanedText = cleanedText.replace(/(\[[\s\S]*?)(\s*)\}(\s*\n\s*"useCases")/g, '$1$2]$3')
     
+    // Strip leading/trailing non-JSON text by finding first { and last }
+    const firstBrace = cleanedText.indexOf('{')
+    const lastBrace = cleanedText.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleanedText = cleanedText.substring(firstBrace, lastBrace + 1)
+    }
+    
+    // Try parsing cleaned object
     const jsonObjectMatch = cleanedText.match(/\{[\s\S]*\}/)
     if (jsonObjectMatch) {
       try {
         const parsed = JSON.parse(jsonObjectMatch[0])
-        logger().debug("[LLM] Successfully parsed JSON object from text")
+        logger().debug("[LLM] Successfully parsed JSON object after cleaning")
         return parsed
       } catch (e) {
+        logger().warn("[LLM] Failed to parse cleaned JSON object, trying original", e)
         // Try original text if cleaned version failed
-        try {
-          const originalMatch = text.match(/\{[\s\S]*\}/)
-          if (originalMatch) {
+        const originalMatch = text.match(/\{[\s\S]*\}/)
+        if (originalMatch) {
+          try {
             return JSON.parse(originalMatch[0])
+          } catch (e2) {
+            logger().warn("[LLM] Failed to parse original JSON object", e2)
+            // Continue to try array
           }
-        } catch (e2) {
-          // Continue to try array
         }
       }
     }
 
+    // Strategy 3: Try parsing as array
     const jsonArrayMatch = text.match(/\[[\s\S]*\]/)
     if (jsonArrayMatch) {
       try {
         const parsed = JSON.parse(jsonArrayMatch[0])
-        logger().debug("[LLM] Successfully parsed JSON array from text")
+        logger().debug("[LLM] Successfully parsed JSON array")
         return parsed
       } catch (e) {
-        // Continue
+        logger().warn("[LLM] Failed to parse JSON array", e)
       }
     }
 
-    // Try parsing the whole text as JSON (last resort)
+    // Strategy 4: Last resort - try parsing the whole text as JSON
     try {
       const parsed = JSON.parse(text.trim())
       logger().debug("[LLM] Successfully parsed entire text as JSON")
       return parsed
     } catch (e) {
-      logger().error("[LLM] Failed to parse JSON response. Response preview:", text.substring(0, 500))
+      logger().error("[LLM] All parsing strategies failed. Response preview:", text.substring(0, 500))
       logger().error("[LLM] Full response:", text)
       throw new Error(`Invalid JSON response from LLM: ${e instanceof Error ? e.message : String(e)}`)
     }
