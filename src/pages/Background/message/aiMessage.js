@@ -423,3 +423,129 @@ export const createAISetSettingsHandler = (EM) => {
   }
 }
 
+export const createAIEnrichExtensionsHandler = (EM) => {
+  return async (ctx) => {
+    if (!EM.AI || !EM.AI.knowledgeBase) {
+      ctx.sendResponse({
+        state: "error",
+        error: "AI knowledge base not available"
+      })
+      return
+    }
+
+    try {
+      const { params } = ctx
+      const extensionIds = params?.extensionIds || [] // Empty array means enrich all
+
+      // Get existing groups and external client
+      const allOptions = await storage.options.getAll()
+      const externalClient = EM.AI.externalClient
+
+      // Get model config from assistant (if available)
+      let modelConfig = null
+      if (EM.AI.assistant) {
+        try {
+          modelConfig = await EM.AI.assistant.getModelConfig()
+        } catch (e) {
+          logger().warn("[AI] Could not get model config for enrichment", e)
+        }
+      }
+
+      // Enrich specific extensions
+      const result = await EM.AI.knowledgeBase.enrichSpecificExtensions(extensionIds, {
+        existingGroups: allOptions.groups || [],
+        externalClient,
+        modelConfig: modelConfig || undefined
+      })
+
+      ctx.sendResponse({
+        state: "success",
+        result
+      })
+    } catch (error) {
+      logger().error("[AI] Error enriching extensions", error)
+      ctx.sendResponse({
+        state: "error",
+        error: error.message
+      })
+    }
+  }
+}
+
+export const createAIGetEnrichmentStatusHandler = (EM) => {
+  return async (ctx) => {
+    if (!EM.AI || !EM.AI.knowledgeBase) {
+      ctx.sendResponse({
+        state: "error",
+        error: "AI knowledge base not available"
+      })
+      return
+    }
+
+    try {
+      const { params } = ctx
+      const extensionIds = params?.extensionIds || []
+
+      const statuses = []
+      
+      if (extensionIds.length === 0) {
+        // Get status for all extensions
+        const allExtensions = await chromeP.management.getAll()
+        for (const ext of allExtensions) {
+          const knowledge = await EM.AI.knowledgeBase.getKnowledge(ext.id)
+          statuses.push({
+            extId: ext.id,
+            extName: ext.name,
+            enriched: !!knowledge?.descriptionEnriched,
+            hasDescription: !!knowledge?.aiGeneratedDescription,
+            description: knowledge?.aiGeneratedDescription || "",
+            useCases: knowledge?.useCases || [],
+            categories: knowledge?.categories || [],
+            lastUpdated: knowledge?.lastUpdated
+          })
+        }
+      } else {
+        // Get status for specific extensions
+        for (const extId of extensionIds) {
+          try {
+            const ext = await chromeP.management.get(extId)
+            const knowledge = await EM.AI.knowledgeBase.getKnowledge(extId)
+            statuses.push({
+              extId: ext.id,
+              extName: ext.name,
+              enriched: !!knowledge?.descriptionEnriched,
+              hasDescription: !!knowledge?.aiGeneratedDescription,
+              description: knowledge?.aiGeneratedDescription || "",
+              useCases: knowledge?.useCases || [],
+              categories: knowledge?.categories || [],
+              lastUpdated: knowledge?.lastUpdated
+            })
+          } catch (error) {
+            logger().warn(`[AI] Extension ${extId} not found`, error)
+            statuses.push({
+              extId,
+              extName: extId.substring(0, 8) + "...",
+              enriched: false,
+              hasDescription: false,
+              useCases: [],
+              categories: [],
+              error: "Extension not found"
+            })
+          }
+        }
+      }
+
+      ctx.sendResponse({
+        state: "success",
+        statuses
+      })
+    } catch (error) {
+      logger().error("[AI] Error getting enrichment status", error)
+      ctx.sendResponse({
+        state: "error",
+        error: error.message
+      })
+    }
+  }
+}
+

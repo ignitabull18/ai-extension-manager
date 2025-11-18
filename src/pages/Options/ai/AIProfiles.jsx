@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react"
 import chromeP from "webext-polyfill-kinda"
 
-import { Button, Card, Checkbox, Input, List, message, Select, Space, Switch, Table, Tag, Typography } from "antd"
-import { RobotOutlined, SendOutlined, FolderAddOutlined, CheckOutlined, EditOutlined, SettingOutlined, ReloadOutlined, KeyOutlined } from "@ant-design/icons"
+import { Button, Card, Checkbox, Input, List, message, Select, Space, Switch, Table, Tag, Typography, Progress } from "antd"
+import { RobotOutlined, SendOutlined, FolderAddOutlined, CheckOutlined, EditOutlined, SettingOutlined, ReloadOutlined, KeyOutlined, ThunderboltOutlined } from "@ant-design/icons"
 
 import { sendMessage } from ".../utils/messageHelper"
 import Title from "../Title.jsx"
@@ -16,6 +16,14 @@ function AIProfiles() {
   const [actionPlan, setActionPlan] = useState(null)
   const [recentIntents, setRecentIntents] = useState([])
   
+  // AI Enrichment state
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false)
+  const [enrichmentProgress, setEnrichmentProgress] = useState({ current: 0, total: 0 })
+  const [extensionList, setExtensionList] = useState([])
+  const [selectedExtensions, setSelectedExtensions] = useState(new Set())
+  const [enrichmentStatuses, setEnrichmentStatuses] = useState(new Map())
+  const [enrichmentSearchText, setEnrichmentSearchText] = useState("")
+
   // Smart Organize state
   const [suggestedGroups, setSuggestedGroups] = useState([])
   const [groupLoading, setGroupLoading] = useState(false)
@@ -23,6 +31,8 @@ function AIProfiles() {
   const [onlyUngrouped, setOnlyUngrouped] = useState(true)
   const [editingGroupNames, setEditingGroupNames] = useState({})
   const [selectedGroups, setSelectedGroups] = useState(new Set())
+  const [expandedRows, setExpandedRows] = useState(new Set())
+  const [extensionMap, setExtensionMap] = useState(new Map())
 
   // Settings state
   const [aiSettings, setAiSettings] = useState({
@@ -43,7 +53,145 @@ function AIProfiles() {
   useEffect(() => {
     loadRecentIntents()
     loadAISettings()
+    loadExtensionMap()
+    loadExtensionList()
+    loadEnrichmentStatuses()
   }, [])
+
+  const loadExtensionMap = async () => {
+    try {
+      const extensions = await chromeP.management.getAll()
+      const map = new Map()
+      extensions.forEach((ext) => {
+        map.set(ext.id, ext.name)
+      })
+      setExtensionMap(map)
+    } catch (error) {
+      console.error("[AI] Failed to load extension map", error)
+    }
+  }
+
+  const loadExtensionList = async () => {
+    try {
+      const extensions = await chromeP.management.getAll()
+      const self = await chromeP.management.getSelf()
+      const filtered = extensions.filter((ext) => ext.id !== self.id)
+      setExtensionList(filtered)
+    } catch (error) {
+      console.error("[AI] Failed to load extension list", error)
+    }
+  }
+
+  const loadEnrichmentStatuses = async () => {
+    try {
+      const response = await sendMessage("ai-get-enrichment-status", { extensionIds: [] })
+      if (response?.state === "success" && response.statuses) {
+        const statusMap = new Map()
+        response.statuses.forEach((status) => {
+          statusMap.set(status.extId, status)
+        })
+        setEnrichmentStatuses(statusMap)
+      }
+    } catch (error) {
+      console.error("[AI] Failed to load enrichment statuses", error)
+    }
+  }
+
+  const handleEnrichAll = async () => {
+    setEnrichmentLoading(true)
+    setEnrichmentProgress({ current: 0, total: extensionList.length })
+
+    try {
+      const response = await sendMessage("ai-enrich-extensions", { extensionIds: [] })
+      
+      if (response?.state === "success" && response.result) {
+        const { success, failed, results } = response.result
+        setEnrichmentProgress({ current: results.length, total: results.length })
+        
+        // Reload enrichment statuses
+        await loadEnrichmentStatuses()
+        
+        if (success > 0) {
+          message.success(`Successfully enriched ${success} extension${success > 1 ? 's' : ''}`)
+        }
+        if (failed > 0) {
+          message.warning(`${failed} extension${failed > 1 ? 's' : ''} failed to enrich`)
+        }
+      } else {
+        message.error(response?.error || "Failed to enrich extensions")
+      }
+    } catch (error) {
+      console.error("[AI] Failed to enrich all extensions", error)
+      message.error("Failed to enrich extensions: " + (error?.message || String(error)))
+    } finally {
+      setEnrichmentLoading(false)
+      setEnrichmentProgress({ current: 0, total: 0 })
+    }
+  }
+
+  const handleEnrichSelected = async () => {
+    if (selectedExtensions.size === 0) {
+      message.warning("Please select at least one extension to enrich")
+      return
+    }
+
+    setEnrichmentLoading(true)
+    const extensionIds = Array.from(selectedExtensions)
+    setEnrichmentProgress({ current: 0, total: extensionIds.length })
+
+    try {
+      const response = await sendMessage("ai-enrich-extensions", { extensionIds })
+      
+      if (response?.state === "success" && response.result) {
+        const { success, failed, results } = response.result
+        setEnrichmentProgress({ current: results.length, total: results.length })
+        
+        // Reload enrichment statuses
+        await loadEnrichmentStatuses()
+        
+        if (success > 0) {
+          message.success(`Successfully enriched ${success} extension${success > 1 ? 's' : ''}`)
+        }
+        if (failed > 0) {
+          message.warning(`${failed} extension${failed > 1 ? 's' : ''} failed to enrich`)
+        }
+      } else {
+        message.error(response?.error || "Failed to enrich selected extensions")
+      }
+    } catch (error) {
+      console.error("[AI] Failed to enrich selected extensions", error)
+      message.error("Failed to enrich extensions: " + (error?.message || String(error)))
+    } finally {
+      setEnrichmentLoading(false)
+      setEnrichmentProgress({ current: 0, total: 0 })
+    }
+  }
+
+  // Filter extensions based on search text
+  const filteredExtensionList = extensionList.filter((ext) => {
+    if (!enrichmentSearchText.trim()) return true
+    const searchLower = enrichmentSearchText.toLowerCase()
+    return ext.name.toLowerCase().includes(searchLower) || ext.id.toLowerCase().includes(searchLower)
+  })
+
+  const toggleExtensionSelection = (extId) => {
+    const newSet = new Set(selectedExtensions)
+    if (newSet.has(extId)) {
+      newSet.delete(extId)
+    } else {
+      newSet.add(extId)
+    }
+    setSelectedExtensions(newSet)
+  }
+
+  const toggleSelectAll = () => {
+    const filtered = filteredExtensionList
+    if (selectedExtensions.size === filtered.length) {
+      setSelectedExtensions(new Set())
+    } else {
+      setSelectedExtensions(new Set(filtered.map((ext) => ext.id)))
+    }
+  }
 
   const loadAISettings = async () => {
     try {
@@ -179,7 +327,7 @@ function AIProfiles() {
 
   const handleSuggestGroups = async () => {
     setGroupLoading(true)
-    setSuggestedGroups([])
+    // Don't clear existing suggestions until we have new ones - allows user to keep exploring
 
     try {
       const response = await sendMessage("ai-suggest-groups", {
@@ -189,15 +337,26 @@ function AIProfiles() {
         }
       })
       
+      console.log("[AI] Suggest groups response:", response)
+      
       if (response?.state === "success" && response.suggestions) {
-        setSuggestedGroups(response.suggestions.groups || [])
-        message.success(`Generated ${response.suggestions.groups?.length || 0} group suggestions`)
+        const groups = response.suggestions.groups || []
+        setSuggestedGroups(groups)
+        setExpandedRows(new Set()) // Reset expanded rows for new suggestions
+        if (groups.length > 0) {
+          message.success(`Generated ${groups.length} group suggestions`)
+        } else {
+          message.warning("No group suggestions were generated. Try adjusting the filters or ensure you have extensions installed.")
+        }
       } else {
+        console.error("[AI] Suggest groups failed:", response)
         message.error(response?.error || "Failed to suggest groups")
+        // Keep existing suggestions visible so user can still explore them
       }
     } catch (error) {
-      console.error("Failed to suggest groups", error)
-      message.error("Failed to suggest groups")
+      console.error("[AI] Failed to suggest groups", error)
+      message.error("Failed to suggest groups: " + (error?.message || String(error)))
+      // Keep existing suggestions visible so user can still explore them
     } finally {
       setGroupLoading(false)
     }
@@ -389,6 +548,177 @@ function AIProfiles() {
       <Card
         title={
           <Space>
+            <ThunderboltOutlined />
+            <span>AI Enrichment</span>
+          </Space>
+        }
+        style={{ marginBottom: "24px" }}>
+        <Space direction="vertical" style={{ width: "100%" }} size="large">
+          <div>
+            <Paragraph type="secondary">
+              Generate detailed AI descriptions, use cases, and categories for your extensions. This improves grouping accuracy and helps you understand what each extension does.
+            </Paragraph>
+          </div>
+
+          <Space>
+            <Button
+              type="primary"
+              icon={<ThunderboltOutlined />}
+              loading={enrichmentLoading}
+              onClick={handleEnrichAll}>
+              Enrich All Extensions
+            </Button>
+            <Button
+              icon={<ThunderboltOutlined />}
+              loading={enrichmentLoading}
+              onClick={handleEnrichSelected}
+              disabled={selectedExtensions.size === 0}>
+              Enrich Selected ({selectedExtensions.size})
+            </Button>
+          </Space>
+
+          {enrichmentLoading && enrichmentProgress.total > 0 && (
+            <Progress
+              percent={Math.round((enrichmentProgress.current / enrichmentProgress.total) * 100)}
+              status="active"
+              format={(percent) => `Enriching: ${enrichmentProgress.current} / ${enrichmentProgress.total}`}
+            />
+          )}
+
+          <div>
+            <Space style={{ marginBottom: "12px" }}>
+              <Input.Search
+                placeholder="Search extensions..."
+                value={enrichmentSearchText}
+                onChange={(e) => setEnrichmentSearchText(e.target.value)}
+                style={{ width: "300px" }}
+                allowClear
+              />
+              <Button size="small" onClick={toggleSelectAll}>
+                {selectedExtensions.size === filteredExtensionList.length ? "Deselect All" : "Select All"}
+              </Button>
+            </Space>
+
+            <Table
+              dataSource={filteredExtensionList}
+              rowKey="id"
+              pagination={{ pageSize: 10 }}
+              size="small"
+              scroll={{ y: 400 }}
+              expandable={{
+                expandedRowRender: (record) => {
+                  const status = enrichmentStatuses.get(record.id)
+                  if (!status || (!status.hasDescription && status.useCases.length === 0 && status.categories.length === 0)) {
+                    return (
+                      <div style={{ padding: "16px", background: "#fafafa", borderRadius: "4px" }}>
+                        <Text type="secondary">No enrichment data available yet. Click 'Enrich All' or select this extension and click 'Enrich Selected' to generate AI descriptions.</Text>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div style={{ padding: "16px", background: "#fafafa", borderRadius: "4px" }}>
+                      <Space direction="vertical" style={{ width: "100%" }} size="small">
+                        {status.hasDescription && status.description && (
+                          <div>
+                            <Text strong>AI-Generated Description: </Text>
+                            <div style={{ marginTop: "8px", padding: "8px", background: "#fff", borderRadius: "4px" }}>
+                              <Text>{status.description}</Text>
+                            </div>
+                            {status.lastUpdated && (
+                              <Text type="secondary" style={{ fontSize: "12px", marginTop: "4px", display: "block" }}>
+                                Updated: {new Date(status.lastUpdated).toLocaleString()}
+                              </Text>
+                            )}
+                          </div>
+                        )}
+                        {status.useCases && status.useCases.length > 0 && (
+                          <div>
+                            <Text strong>Use Cases: </Text>
+                            <div style={{ marginTop: "8px" }}>
+                              <Space wrap>
+                                {status.useCases.map((useCase, idx) => (
+                                  <Tag key={idx} color="green">{useCase}</Tag>
+                                ))}
+                              </Space>
+                            </div>
+                          </div>
+                        )}
+                        {status.categories && status.categories.length > 0 && (
+                          <div>
+                            <Text strong>Categories: </Text>
+                            <div style={{ marginTop: "8px" }}>
+                              <Space wrap>
+                                {status.categories.map((category, idx) => (
+                                  <Tag key={idx} color="blue">{category}</Tag>
+                                ))}
+                              </Space>
+                            </div>
+                          </div>
+                        )}
+                      </Space>
+                    </div>
+                  )
+                }
+              }}
+              columns={[
+                {
+                  title: "Select",
+                  width: 60,
+                  render: (_, record) => (
+                    <Checkbox
+                      checked={selectedExtensions.has(record.id)}
+                      onChange={() => toggleExtensionSelection(record.id)}
+                    />
+                  )
+                },
+                {
+                  title: "Extension Name",
+                  render: (_, record) => (
+                    <Text>{record.name}</Text>
+                  )
+                },
+                {
+                  title: "Status",
+                  render: (_, record) => {
+                    const status = enrichmentStatuses.get(record.id)
+                    if (!status) {
+                      return <Tag color="default">Not Enriched</Tag>
+                    }
+                    if (status.enriched) {
+                      return <Tag color="green">Enriched</Tag>
+                    }
+                    if (status.hasDescription) {
+                      return <Tag color="orange">Partial</Tag>
+                    }
+                    return <Tag color="default">Not Enriched</Tag>
+                  }
+                },
+                {
+                  title: "Use Cases",
+                  render: (_, record) => {
+                    const status = enrichmentStatuses.get(record.id)
+                    const count = status?.useCases?.length || 0
+                    return count > 0 ? <Tag>{count} use case{count > 1 ? 's' : ''}</Tag> : <Text type="secondary">-</Text>
+                  }
+                },
+                {
+                  title: "Categories",
+                  render: (_, record) => {
+                    const status = enrichmentStatuses.get(record.id)
+                    const count = status?.categories?.length || 0
+                    return count > 0 ? <Tag>{count} categor{count > 1 ? 'ies' : 'y'}</Tag> : <Text type="secondary">-</Text>
+                  }
+                }
+              ]}
+            />
+          </div>
+        </Space>
+      </Card>
+
+      <Card
+        title={
+          <Space>
             <FolderAddOutlined />
             <span>Smart Organize</span>
           </Space>
@@ -413,7 +743,7 @@ function AIProfiles() {
             Suggest Groups
           </Button>
 
-          {suggestedGroups.length > 0 && (
+          {suggestedGroups.length > 0 ? (
             <div>
               <Space style={{ marginBottom: "16px" }}>
                 <Button
@@ -428,6 +758,7 @@ function AIProfiles() {
                   setSuggestedGroups([])
                   setSelectedGroups(new Set())
                   setEditingGroupNames({})
+                  setExpandedRows(new Set())
                 }}>
                   Clear
                 </Button>
@@ -438,6 +769,52 @@ function AIProfiles() {
                 rowKey="id"
                 pagination={false}
                 size="small"
+                expandable={{
+                  expandedRowKeys: Array.from(expandedRows),
+                  onExpand: (expanded, record) => {
+                    const newExpanded = new Set(expandedRows)
+                    if (expanded) {
+                      newExpanded.add(record.id)
+                    } else {
+                      newExpanded.delete(record.id)
+                    }
+                    setExpandedRows(newExpanded)
+                  },
+                  expandedRowRender: (record) => {
+                    const extensionNames = record.extensionIds
+                      .map((id) => extensionMap.get(id) || id.substring(0, 8) + "...")
+                      .filter(Boolean)
+                    
+                    return (
+                      <div style={{ padding: "16px", background: "#fafafa", borderRadius: "4px" }}>
+                        <Space direction="vertical" style={{ width: "100%" }} size="small">
+                          {record.description && (
+                            <div>
+                              <Text strong>Description: </Text>
+                              <Text>{record.description}</Text>
+                            </div>
+                          )}
+                          {record.rationale && (
+                            <div>
+                              <Text strong>Rationale: </Text>
+                              <Text type="secondary">{record.rationale}</Text>
+                            </div>
+                          )}
+                          <div>
+                            <Text strong>Extensions in this group ({extensionNames.length}):</Text>
+                            <div style={{ marginTop: "8px" }}>
+                              <Space wrap>
+                                {extensionNames.map((name, idx) => (
+                                  <Tag key={idx} color="blue">{name}</Tag>
+                                ))}
+                              </Space>
+                            </div>
+                          </div>
+                        </Space>
+                      </div>
+                    )
+                  }
+                }}
                 columns={[
                   {
                     title: "Select",
@@ -483,15 +860,21 @@ function AIProfiles() {
                     )
                   },
                   {
-                    title: "Rationale",
+                    title: "Description",
                     render: (_, record) => (
-                      <Text type="secondary" style={{ fontSize: "12px" }}>
-                        {record.rationale}
+                      <Text type="secondary" style={{ fontSize: "12px" }} ellipsis={{ tooltip: record.description || record.rationale }}>
+                        {record.description || record.rationale || "No description"}
                       </Text>
                     )
                   }
                 ]}
               />
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", padding: "24px" }}>
+              <Text type="secondary">
+                {groupLoading ? "Generating group suggestions..." : "No group suggestions yet. Click 'Suggest Groups' to generate suggestions based on your extensions."}
+              </Text>
             </div>
           )}
         </Space>

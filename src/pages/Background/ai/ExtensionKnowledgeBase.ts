@@ -502,5 +502,133 @@ Generate enriched metadata for this extension. Return only valid JSON.`
       throw error
     }
   }
+
+  /**
+   * Enrich specific extensions by their IDs
+   * @param extensionIds Array of extension IDs to enrich (empty array means all extensions)
+   * @param context Enrichment context (groups, external client, model config)
+   * @returns Object with success count, failure count, and results per extension
+   */
+  public async enrichSpecificExtensions(
+    extensionIds: string[],
+    context?: {
+      existingGroups?: config.IGroup[]
+      externalClient?: any // ExternalKnowledgeClient
+      modelConfig?: ai.IAIModelConfig
+    }
+  ): Promise<{
+    success: number
+    failed: number
+    results: Array<{
+      extId: string
+      extName: string
+      success: boolean
+      error?: string
+    }>
+  }> {
+    logger().info(`[AI] Starting enrichment for ${extensionIds.length > 0 ? extensionIds.length : 'all'} extensions`)
+    
+    const results: Array<{
+      extId: string
+      extName: string
+      success: boolean
+      error?: string
+    }> = []
+
+    try {
+      let extensionsToEnrich: chrome.management.ExtensionInfo[]
+      
+      if (extensionIds.length === 0) {
+        // Enrich all extensions
+        extensionsToEnrich = await chromeP.management.getAll()
+      } else {
+        // Enrich only specified extensions
+        extensionsToEnrich = []
+        for (const extId of extensionIds) {
+          try {
+            const ext = await chromeP.management.get(extId)
+            if (ext) {
+              extensionsToEnrich.push(ext)
+            }
+          } catch (error) {
+            logger().warn(`[AI] Extension ${extId} not found`, error)
+            results.push({
+              extId,
+              extName: extId.substring(0, 8) + "...",
+              success: false,
+              error: "Extension not found"
+            })
+          }
+        }
+      }
+
+      for (const ext of extensionsToEnrich) {
+        try {
+          const record = await this.repo.get(ext.id)
+          if (!record) {
+            results.push({
+              extId: ext.id,
+              extName: ext.name,
+              success: false,
+              error: "Extension record not found"
+            })
+            continue
+          }
+
+          const existing = await this.getKnowledge(ext.id)
+          
+          // Enrich regardless of whether it needs enrichment (user explicitly requested)
+          const enrichedData = await this.enrichExtensionMetadata(record, {
+            existingGroups: context?.existingGroups,
+            existingKnowledge: existing || undefined,
+            externalClient: context?.externalClient,
+            modelConfig: context?.modelConfig
+          })
+
+          const knowledge = existing || await this.buildKnowledge(record)
+          
+          // Update with enriched data
+          if (enrichedData.aiGeneratedDescription) {
+            knowledge.aiGeneratedDescription = enrichedData.aiGeneratedDescription
+            knowledge.descriptionEnriched = true
+          }
+          if (enrichedData.useCases && enrichedData.useCases.length > 0) {
+            // Merge with existing use cases
+            const existingUseCases = knowledge.useCases || []
+            knowledge.useCases = [...new Set([...existingUseCases, ...enrichedData.useCases])]
+          }
+          if (enrichedData.categories && enrichedData.categories.length > 0) {
+            knowledge.categories = enrichedData.categories
+          }
+
+          await this.setKnowledge(knowledge)
+          
+          results.push({
+            extId: ext.id,
+            extName: ext.name,
+            success: true
+          })
+        } catch (error: any) {
+          logger().error(`[AI] Failed to enrich extension ${ext.id}`, error)
+          results.push({
+            extId: ext.id,
+            extName: ext.name,
+            success: false,
+            error: error?.message || String(error)
+          })
+        }
+      }
+
+      const success = results.filter((r) => r.success).length
+      const failed = results.filter((r) => !r.success).length
+
+      logger().info(`[AI] Enrichment complete: ${success} succeeded, ${failed} failed`)
+      
+      return { success, failed, results }
+    } catch (error) {
+      logger().error("[AI] Error enriching specific extensions", error)
+      throw error
+    }
+  }
 }
 

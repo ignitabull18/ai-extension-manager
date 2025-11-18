@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **AI Enrichment Feature**: New dedicated section in AI Profiles page for generating detailed AI descriptions, use cases, and categories for extensions
+  - "Enrich All Extensions" button to generate AI metadata for all installed extensions
+  - "Enrich Selected" button to enrich only selected extensions from a searchable table
+  - Expandable rows showing AI-generated descriptions, use cases, and categories for each extension
+  - Progress indicator during enrichment process
+  - Enrichment status display (Enriched, Partial, Not Enriched) with use case and category counts
+  - Search functionality to filter extensions by name or ID
+  - Select all/deselect all functionality for batch operations
+  - Positioned before Smart Organize section to improve grouping accuracy (enrichment should be done first)
+
 ### Changed
 - **AI Integration Improvements**: Enhanced OpenAI integration for more reliable JSON parsing
   - Updated AI model configuration to use OpenAI `gpt-5-2025-08-07` exclusively (removed references to other providers)
@@ -15,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved error logging to show which parsing strategy failed for better debugging
   - Updated all documentation to reflect OpenAI-only support
   - Fixed GPT-5 model compatibility: Removed unsupported `temperature` parameter for GPT-5 models (GPT-5 only supports default temperature value)
+  - Fixed AI message handler response conflict: Removed premature `sendResponse` call in `createAIMessage` that was interfering with async handlers, causing UI error flashes
+  - Enhanced AI suggested groups UI: Added expandable rows to preview group details (description, rationale, extension names) before applying, improved empty state messaging, and preserved suggestions during errors for better exploration experience
 
 ### Added
 - **AI-Assisted Extension Management**: Natural language interface for intelligent extension management

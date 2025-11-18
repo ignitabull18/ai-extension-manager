@@ -10,7 +10,9 @@ import {
   createAIApplyGroupsHandler,
   createAIRefreshEnrichmentHandler,
   createAIGetSettingsHandler,
-  createAISetSettingsHandler
+  createAISetSettingsHandler,
+  createAIEnrichExtensionsHandler,
+  createAIGetEnrichmentStatusHandler
 } from "./aiMessage"
 
 /**
@@ -93,7 +95,14 @@ const createAIMessage = (EM, ctx) => {
   // Set AI settings
   listen("ai-set-settings", ctx, createAISetSettingsHandler(EM))
 
-  ctx.sendResponse({ state: "success" })
+  // Enrich extensions (all or selected)
+  listen("ai-enrich-extensions", ctx, createAIEnrichExtensionsHandler(EM))
+
+  // Get enrichment status for extensions
+  listen("ai-get-enrichment-status", ctx, createAIGetEnrichmentStatusHandler(EM))
+
+  // Note: Each handler above sends its own response via ctx.sendResponse()
+  // Do not send a response here as it would interfere with async handlers
 }
 
 export default createMessageHandler
