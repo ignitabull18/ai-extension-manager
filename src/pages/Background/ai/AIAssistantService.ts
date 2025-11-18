@@ -111,16 +111,17 @@ export class AIAssistantService {
     const tabs = await chromeP.tabs.query({})
     const activeTab = tabs.find((t) => t.active) || tabs[0] || null
 
+    const taskHandler = new ExecuteTaskHandler()
+    
     const ctx: RunningProcessContext = {
       self,
       tabs,
       tab: activeTab,
       EM: this.EM,
       rule: undefined,
-      matchResult: undefined
+      matchResult: null,
+      executeTaskHandler: taskHandler
     }
-
-    const taskHandler = new ExecuteTaskHandler()
     const priority = new ExecuteTaskPriority()
 
     // Enable extensions
@@ -187,7 +188,12 @@ Return a JSON object with this structure:
 
 Be conservative - only enable/disable extensions that are clearly relevant to the task.`
 
-      const extensionsList = context.extensions.map((ext: any) => 
+      const extensionsList = (context.extensions || []).map((ext: {
+        id: string
+        name: string
+        description?: string
+        enrichedDescription?: string
+      }) => 
         `- ${ext.name} (${ext.id}): ${ext.enrichedDescription || ext.description || "No description"}`
       ).join("\n")
 
@@ -203,7 +209,7 @@ ${extensionsList}
 
 Based on the user's task, which extensions should be enabled or disabled? Return only valid JSON.`
 
-      const response = await this.llmClient.call(userPrompt, systemPrompt, modelConfig)
+      const response = await this.llmClient.call(userPrompt, modelConfig, systemPrompt)
       const actionPlan = this.llmClient.parseJSONResponse(response)
 
       // Validate and normalize the response
@@ -421,15 +427,23 @@ Return a JSON object with this structure:
 
 Create 3-8 groups. Each group should have at least 2 extensions. Extensions can only be in one group.`
 
-      const extensionsList = context.extensions.map((ext: any) => 
+      const extensionsList = (context.extensions || []).map((ext: {
+        id: string
+        name: string
+        description?: string
+        enrichedDescription?: string
+        useCases?: string[]
+        categories?: string[]
+        permissions?: string[]
+      }) => 
         `- ${ext.name} (${ext.id}): ${ext.enrichedDescription || ext.description || "No description"}
   Use cases: ${ext.useCases?.join(", ") || "None"}
   Categories: ${ext.categories?.join(", ") || "None"}
   Permissions: ${ext.permissions?.join(", ") || "None"}`
       ).join("\n\n")
 
-      const existingGroupsInfo = context.existingGroups.length > 0
-        ? `\n\nExisting groups (for reference, don't duplicate):\n${context.existingGroups.map((g: any) => `- ${g.name}: ${g.extensionIds?.length || 0} extensions`).join("\n")}`
+      const existingGroupsInfo = (context.existingGroups || []).length > 0
+        ? `\n\nExisting groups (for reference, don't duplicate):\n${context.existingGroups.map((g: { name: string; extensionIds?: string[] }) => `- ${g.name}: ${g.extensionIds?.length || 0} extensions`).join("\n")}`
         : ""
 
       const userPrompt = `Analyze these browser extensions and suggest logical groups:
@@ -438,11 +452,18 @@ ${extensionsList}${existingGroupsInfo}
 
 Suggest groups that make sense based on functionality, use cases, and workflow. Return only valid JSON.`
 
-      const response = await this.llmClient.call(userPrompt, systemPrompt, modelConfig)
+      const response = await this.llmClient.call(userPrompt, modelConfig, systemPrompt)
       const suggestions = this.llmClient.parseJSONResponse(response)
 
       // Validate and normalize the response
-      const groups: ai.IAISuggestedGroup[] = (suggestions.groups || []).map((g: any, index: number) => ({
+      const groups: ai.IAISuggestedGroup[] = (suggestions.groups || []).map((g: {
+        id?: string
+        name?: string
+        description?: string
+        extensionIds?: string[]
+        rationale?: string
+        confidence?: number
+      }, index: number) => ({
         id: g.id || `suggested_${Date.now()}_${index}`,
         name: g.name || `Group ${index + 1}`,
         description: g.description || "",
@@ -469,7 +490,6 @@ Suggest groups that make sense based on functionality, use cases, and workflow. 
    */
   private async fallbackGrouping(context: any): Promise<ai.IAIGroupSuggestions> {
     const extensions = context.extensions || []
-    const existingGroups = context.existingGroups || []
     
     // Simple clustering based on keywords in names/descriptions
     const groups: ai.IAISuggestedGroup[] = []
@@ -486,27 +506,33 @@ Suggest groups that make sense based on functionality, use cases, and workflow. 
     ]
 
     for (const category of categories) {
-      const matchingExtensions = extensions.filter((ext) => {
+      const matchingExtensions = extensions.filter((ext: {
+        id: string
+        name: string
+        description?: string
+        enrichedDescription?: string
+        useCases?: string[]
+      }) => {
         if (usedExtensionIds.has(ext.id)) return false
         
         const searchText = [
           ext.name,
           ext.description,
           ext.enrichedDescription,
-          ...ext.useCases
+          ...(ext.useCases || [])
         ].join(" ").toLowerCase()
 
         return category.keywords.some((keyword) => searchText.includes(keyword))
       })
 
       if (matchingExtensions.length >= 2) {
-        matchingExtensions.forEach((ext) => usedExtensionIds.add(ext.id))
+        matchingExtensions.forEach((ext: { id: string }) => usedExtensionIds.add(ext.id))
         
         groups.push({
           id: `suggested_${Date.now()}_${groups.length}`,
           name: category.name,
           description: `Extensions related to ${category.name.toLowerCase()}`,
-          extensionIds: matchingExtensions.map((e) => e.id),
+          extensionIds: matchingExtensions.map((e: { id: string }) => e.id),
           rationale: `Grouped based on keywords: ${category.keywords.join(", ")}`,
           confidence: 0.6,
           aiCreated: true,
@@ -516,13 +542,13 @@ Suggest groups that make sense based on functionality, use cases, and workflow. 
     }
 
     // Create "Other" group for remaining extensions
-    const remainingExtensions = extensions.filter((ext) => !usedExtensionIds.has(ext.id))
+    const remainingExtensions = extensions.filter((ext: { id: string }) => !usedExtensionIds.has(ext.id))
     if (remainingExtensions.length > 0) {
       groups.push({
         id: `suggested_${Date.now()}_other`,
         name: "Other",
         description: "Miscellaneous extensions",
-        extensionIds: remainingExtensions.map((e) => e.id),
+        extensionIds: remainingExtensions.map((e: { id: string }) => e.id),
         rationale: "Extensions that don't fit into other categories",
         confidence: 0.3,
         aiCreated: true,

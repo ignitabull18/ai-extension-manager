@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react"
 import chromeP from "webext-polyfill-kinda"
 
-import { Button, Card, Checkbox, Input, List, message, Space, Switch, Table, Tag, Typography } from "antd"
-import { RobotOutlined, SendOutlined, FolderAddOutlined, CheckOutlined, EditOutlined, SettingOutlined, ReloadOutlined } from "@ant-design/icons"
+import { Button, Card, Checkbox, Input, List, message, Select, Space, Switch, Table, Tag, Typography } from "antd"
+import { RobotOutlined, SendOutlined, FolderAddOutlined, CheckOutlined, EditOutlined, SettingOutlined, ReloadOutlined, KeyOutlined } from "@ant-design/icons"
 
 import { sendMessage } from ".../utils/messageHelper"
 import Title from "../Title.jsx"
@@ -28,9 +28,17 @@ function AIProfiles() {
   const [aiSettings, setAiSettings] = useState({
     aiDescriptionEnrichment: false,
     aiExternalMetadataEnabled: false,
-    aiExternalMetadataUrl: ""
+    aiExternalMetadataUrl: "",
+    modelConfig: {
+      enabled: false,
+      primary: "gpt-5-2025-08-07",
+      fallback: ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+      apiKey: "",
+      endpoint: ""
+    }
   })
   const [settingsLoading, setSettingsLoading] = useState(false)
+  const [apiKeyValue, setApiKeyValue] = useState("") // Separate state for API key input
 
   useEffect(() => {
     loadRecentIntents()
@@ -42,6 +50,12 @@ function AIProfiles() {
       const response = await sendMessage("ai-get-settings", {})
       if (response?.state === "success" && response.settings) {
         setAiSettings(response.settings)
+        // If API key is masked, don't populate the input field
+        if (response.settings.modelConfig?.apiKey && !response.settings.modelConfig.apiKey.startsWith("***")) {
+          setApiKeyValue(response.settings.modelConfig.apiKey)
+        } else {
+          setApiKeyValue("")
+        }
       }
     } catch (error) {
       console.error("Failed to load AI settings", error)
@@ -51,9 +65,18 @@ function AIProfiles() {
   const handleSaveSettings = async () => {
     setSettingsLoading(true)
     try {
-      const response = await sendMessage("ai-set-settings", { settings: aiSettings })
+      const settingsToSave = {
+        ...aiSettings,
+        modelConfig: {
+          ...aiSettings.modelConfig,
+          apiKey: apiKeyValue || aiSettings.modelConfig.apiKey // Use new value if provided, otherwise keep existing
+        }
+      }
+      const response = await sendMessage("ai-set-settings", { settings: settingsToSave })
       if (response?.state === "success") {
         message.success("Settings saved successfully")
+        // Reload to get masked API key
+        await loadAISettings()
       } else {
         message.error(response?.error || "Failed to save settings")
       }
@@ -528,6 +551,101 @@ function AIProfiles() {
                   </div>
                 </div>
               )}
+
+              <div style={{ marginTop: "24px", paddingTop: "24px", borderTop: "1px solid #f0f0f0" }}>
+                <Space direction="vertical" style={{ width: "100%" }} size="middle">
+                  <div>
+                    <Space>
+                      <KeyOutlined />
+                      <Text strong style={{ fontSize: "16px" }}>LLM API Configuration</Text>
+                    </Space>
+                  </div>
+
+                  <div>
+                    <Space>
+                      <Switch
+                        checked={aiSettings.modelConfig?.enabled || false}
+                        onChange={(checked) =>
+                          setAiSettings({
+                            ...aiSettings,
+                            modelConfig: { ...aiSettings.modelConfig, enabled: checked }
+                          })
+                        }
+                      />
+                      <Text strong>Enable AI features</Text>
+                    </Space>
+                    <div style={{ marginLeft: "32px", marginTop: "4px" }}>
+                      <Text type="secondary" style={{ fontSize: "12px" }}>
+                        Enable natural language extension management, smart grouping, and description enrichment
+                      </Text>
+                    </div>
+                  </div>
+
+                  {aiSettings.modelConfig?.enabled && (
+                    <>
+                      <div>
+                        <Text strong>Primary Model:</Text>
+                        <Select
+                          value={aiSettings.modelConfig?.primary || "gpt-5-2025-08-07"}
+                          onChange={(value) =>
+                            setAiSettings({
+                              ...aiSettings,
+                              modelConfig: { ...aiSettings.modelConfig, primary: value }
+                            })
+                          }
+                          style={{ width: "100%", marginTop: "8px" }}
+                          options={[
+                            { label: "OpenAI GPT-5", value: "gpt-5-2025-08-07" },
+                            { label: "Anthropic Claude Sonnet 4.5", value: "claude-sonnet-4-5-20250929" },
+                            { label: "Google Gemini 2.5 Pro", value: "gemini-2.5-pro" }
+                          ]}
+                        />
+                      </div>
+
+                      <div>
+                        <Text strong>API Key:</Text>
+                        <Input.Password
+                          value={apiKeyValue}
+                          onChange={(e) => setApiKeyValue(e.target.value)}
+                          placeholder={
+                            aiSettings.modelConfig?.apiKey?.startsWith("***")
+                              ? "API key is set (enter new key to update)"
+                              : "Enter your API key"
+                          }
+                          style={{ marginTop: "8px" }}
+                        />
+                        <div style={{ marginTop: "4px" }}>
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            {aiSettings.modelConfig?.primary === "gpt-5-2025-08-07" && "Get your API key from https://platform.openai.com/api-keys"}
+                            {aiSettings.modelConfig?.primary === "claude-sonnet-4-5-20250929" && "Get your API key from https://console.anthropic.com/"}
+                            {aiSettings.modelConfig?.primary === "gemini-2.5-pro" && "Get your API key from https://makersuite.google.com/app/apikey"}
+                          </Text>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Text strong>Custom API Endpoint (optional):</Text>
+                        <Input
+                          value={aiSettings.modelConfig?.endpoint || ""}
+                          onChange={(e) =>
+                            setAiSettings({
+                              ...aiSettings,
+                              modelConfig: { ...aiSettings.modelConfig, endpoint: e.target.value }
+                            })
+                          }
+                          placeholder="Leave empty to use default endpoint"
+                          style={{ marginTop: "8px" }}
+                        />
+                        <div style={{ marginTop: "4px" }}>
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            Use a custom endpoint (e.g., for proxy or self-hosted models)
+                          </Text>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Space>
+              </div>
             </Space>
           </div>
 

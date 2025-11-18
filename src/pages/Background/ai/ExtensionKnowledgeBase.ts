@@ -339,7 +339,7 @@ Existing aliases: ${context.existingAliases?.join(", ") || "None"}
 
 Generate enriched metadata for this extension. Return only valid JSON.`
 
-      const response = await this.llmClient.call(userPrompt, systemPrompt, modelConfig)
+      const response = await this.llmClient.call(userPrompt, modelConfig, systemPrompt)
       const enriched = this.llmClient.parseJSONResponse(response)
 
       return {

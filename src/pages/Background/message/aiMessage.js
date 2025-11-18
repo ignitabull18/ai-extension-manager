@@ -305,16 +305,35 @@ export const createAIRefreshEnrichmentHandler = (EM) => {
 export const createAIGetSettingsHandler = (EM) => {
   return async (ctx) => {
     try {
-      const aiDescriptionEnrichment = await EM.LocalOptions.getValue<boolean>("aiDescriptionEnrichment") ?? false
-      const aiExternalMetadataEnabled = await EM.LocalOptions.getValue<boolean>("aiExternalMetadataEnabled") ?? false
-      const aiExternalMetadataUrl = await EM.LocalOptions.getValue<string>("aiExternalMetadataUrl") || ""
+      const aiDescriptionEnrichment = await EM.LocalOptions.getValue("aiDescriptionEnrichment") ?? false
+      const aiExternalMetadataEnabled = await EM.LocalOptions.getValue("aiExternalMetadataEnabled") ?? false
+      const aiExternalMetadataUrl = await EM.LocalOptions.getValue("aiExternalMetadataUrl") || ""
+      
+      // Get model config
+      let modelConfig = await EM.LocalOptions.getValue("aiModelConfig")
+      if (!modelConfig) {
+        modelConfig = {
+          primary: "gpt-5-2025-08-07",
+          fallback: ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+          enabled: false,
+          apiKey: "",
+          endpoint: ""
+        }
+      }
 
       ctx.sendResponse({
         state: "success",
         settings: {
           aiDescriptionEnrichment,
           aiExternalMetadataEnabled,
-          aiExternalMetadataUrl
+          aiExternalMetadataUrl,
+          modelConfig: {
+            enabled: modelConfig.enabled || false,
+            primary: modelConfig.primary || "gpt-5-2025-08-07",
+            fallback: modelConfig.fallback || ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+            apiKey: modelConfig.apiKey ? "***" + modelConfig.apiKey.slice(-4) : "", // Masked for display
+            endpoint: modelConfig.endpoint || ""
+          }
         }
       })
     } catch (error) {
@@ -356,6 +375,39 @@ export const createAISetSettingsHandler = (EM) => {
         if (EM.AI?.externalClient) {
           EM.AI.externalClient.setBaseUrl(settings.aiExternalMetadataUrl || undefined)
         }
+      }
+
+      // Handle model config
+      if (settings.modelConfig !== undefined) {
+        const currentModelConfig = await EM.LocalOptions.getValue("aiModelConfig") || {
+          primary: "gpt-5-2025-08-07",
+          fallback: ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+          enabled: false,
+          apiKey: "",
+          endpoint: ""
+        }
+
+        const updatedModelConfig = { ...currentModelConfig }
+
+        if (settings.modelConfig.enabled !== undefined) {
+          updatedModelConfig.enabled = settings.modelConfig.enabled
+        }
+        if (settings.modelConfig.primary !== undefined) {
+          updatedModelConfig.primary = settings.modelConfig.primary
+        }
+        if (settings.modelConfig.fallback !== undefined) {
+          updatedModelConfig.fallback = settings.modelConfig.fallback
+        }
+        if (settings.modelConfig.endpoint !== undefined) {
+          updatedModelConfig.endpoint = settings.modelConfig.endpoint
+        }
+        
+        // Only update API key if a new one was provided (not masked)
+        if (settings.modelConfig.apiKey !== undefined && !settings.modelConfig.apiKey.startsWith("***")) {
+          updatedModelConfig.apiKey = settings.modelConfig.apiKey
+        }
+
+        await EM.LocalOptions.setValue("aiModelConfig", updatedModelConfig)
       }
 
       ctx.sendResponse({

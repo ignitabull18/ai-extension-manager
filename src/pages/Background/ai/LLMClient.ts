@@ -10,8 +10,8 @@ export class LLMClient {
    */
   public async call(
     prompt: string,
-    systemPrompt?: string,
-    config: ai.IAIModelConfig
+    config: ai.IAIModelConfig,
+    systemPrompt?: string
   ): Promise<string> {
     if (!config.enabled || !config.apiKey) {
       throw new Error("LLM is not enabled or API key is missing")
