@@ -51,6 +51,7 @@ This document contains essential rules and guidelines for AI agents (particularl
   - `/group` - Extension groups
   - `/management` - Extension management (with share/import sub-routes)
   - `/rule` - Rule configuration
+  - `/domain` - Domain-based auto-enable rules
   - `/history` - Extension history
   - `/ai` - AI Assistant (natural language extension management)
 
@@ -69,8 +70,8 @@ This document contains essential rules and guidelines for AI agents (particularl
 
 - Type definitions are in `src/types/`
 - Key types:
-  - `rule.d.ts` - Rule system types (both v1 and v2)
-  - `config.d.ts` - Configuration types (Settings, Scenes, Groups, Management)
+  - `rule.d.ts` - Rule system types (both v1 and v2, includes domain rules with source/overrideMode/priority)
+  - `config.d.ts` - Configuration types (Settings, Scenes, Groups with alwaysOn flag, Management)
   - `global.d.ts` - Global ExtensionManager interface
   - `ai.d.ts` - AI assistant types (ExtensionKnowledge, AIIntent, AIActionPlan, AIModelConfig)
 
@@ -103,11 +104,23 @@ The AI system provides natural language extension management:
 The rule system is the core feature. Understand these concepts:
 
 - **Rule V2** is the current version (use `ruleV2.IRuleConfig`)
+- **Domain Auto-Enable Rules**: Simplified domain-based rules stored with `source="domainAuto"`
+  - Managed via `DomainRuleOptions` storage helper
+  - Support wildcard/regex pattern matching
+  - Work with individual extensions (not groups)
+  - Override modes: "soft" (priority 0) or "override" (priority 10)
+  - Filtered from advanced rule editor (managed in Domain Auto-Enable page)
+- **Always-On Groups**: Groups with `alwaysOn: true` flag
+  - Extensions automatically enabled on startup and scene/group changes
+  - Handled by `AlwaysOnGroupHandler`
+  - Can still be disabled by rules (not immutable)
 - **Match Types**: URL, Scene, OS, Period triggers
 - **Action Types**: `openWhenMatched`, `closeWhenMatched`, `openOnlyWhenMatched`, `closeOnlyWhenMatched`, `custom`, `none`
 - **Rule Processing**: Rules are processed in `src/pages/Background/rule/processor.ts`
+  - Rules are sorted by priority before execution (higher priority wins conflicts)
+  - Domain rules with override mode have priority 10
 - **Rule Handler**: `src/pages/Background/rule/RuleHandler.ts` manages rule execution
-- **Execute Task Handler**: Batches extension enable/disable operations
+- **Execute Task Handler**: Batches extension enable/disable operations with priority support
 
 ### 7. Build System
 
@@ -220,11 +233,32 @@ export default function ComponentName() {
 3. Update rule editor UI in `src/pages/Options/rule/editor/`
 4. Update rule converter if needed (`RuleConverter.ts`)
 
+#### Working with Domain Rules
+1. Domain rules are stored as `ruleV2.IRuleConfig` with `source="domainAuto"`
+2. Use `DomainRuleOptions` helper (`src/storage/sync/DomainRuleOptions.js`) to manage domain rules
+3. Domain rules are automatically included in rule processing (no separate pipeline)
+4. Set `overrideMode` to "override" for higher priority (priority 10) or "soft" for default (priority 0)
+5. Domain rules work with individual extensions, not groups
+
+#### Working with Always-On Groups
+1. Add `alwaysOn: boolean` flag to groups in `config.IGroup`
+2. `AlwaysOnGroupHandler` automatically enables extensions in always-on groups on startup and scene changes
+3. Always-on groups are not immutable - rules can still disable their extensions
+4. Visual indicator (tag) shown in group list for always-on groups
+
 #### Adding a New Storage Option
 1. Add type definition in `src/types/config.d.ts`
 2. Add to sync storage schema in `src/storage/sync/`
 3. Add UI in Settings page if user-configurable
 4. Update migration logic in `LocalOptions.ts` if needed
+5. **Update ConfigFileBackup.ts** to include new option in export/import
+
+#### Config Import/Export
+- Export includes: settings, groups (with alwaysOn), scenes, rules, domain rules, management data
+- Import supports merge mode (skip existing) or overwrite mode (replace existing)
+- Preview modal shows what will be imported before applying
+- Config bundles include version metadata for compatibility tracking
+- Useful for transferring configs between Chrome forks or backing up settings
 
 #### Adding a New Page/Route
 1. Create component in `src/pages/Options/`

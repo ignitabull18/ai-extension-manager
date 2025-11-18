@@ -14,6 +14,7 @@ import Settings from "./settings/Settings.jsx"
 
 // Lazy load heavy routes
 const AIProfiles = lazy(() => import("./ai/AIProfiles.jsx"))
+const DomainAutoEnable = lazy(() => import("./domain/DomainAutoEnable.jsx"))
 const ExtensionHistoryIndex = lazy(() => import("./history/ExtensionHistoryIndex"))
 const ExtensionManageIndex = lazy(() => import("./management/ExtensionManageIndex.jsx"))
 const ExtensionManageTable = lazy(() => import("./management/ExtensionManageTable"))
@@ -53,6 +54,7 @@ function Options() {
                 <Route path="import" element={<ExtensionImport />} />
               </Route>
               <Route path="/rule" element={<RuleSetting />} />
+              <Route path="/domain" element={<DomainAutoEnable />} />
               <Route path="/history" element={<ExtensionHistoryIndex />} />
               <Route path="/ai" element={<AIProfiles />} />
             </Routes>

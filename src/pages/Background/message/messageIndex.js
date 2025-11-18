@@ -57,7 +57,7 @@ const createMessageHandler = (EM) => {
       return true // Keep port open for async response
     } else if (msgId === "current-scene-changed" || msgId === "rule-config-changed") {
       // Rule messages
-      createRuleMessage(EM.Rule.handler, ctx).catch((error) => {
+      createRuleMessage(EM.Rule.handler, ctx, EM).catch((error) => {
         logger().error("[Message] Error in rule message handler", error)
       })
       return true // Keep port open for async response
@@ -69,7 +69,7 @@ const createMessageHandler = (EM) => {
       return true // Keep port open for async response
     } else {
       // Unknown message - try all handlers (fallback for backwards compatibility)
-      createRuleMessage(EM.Rule.handler, ctx).catch((error) => {
+      createRuleMessage(EM.Rule.handler, ctx, EM).catch((error) => {
         logger().error("[Message] Error in rule message handler", error)
       })
       createHistoryMessage(EM, ctx).catch((error) => {
@@ -86,9 +86,9 @@ const createMessageHandler = (EM) => {
 /*
  * 规则处理相关的 message
  */
-const createRuleMessage = async (handler, ctx) => {
+const createRuleMessage = async (handler, ctx, EM) => {
   // 当前情况模式发生变更
-  if (await listen("current-scene-changed", ctx, createCurrentSceneChangedHandler(handler))) return
+  if (await listen("current-scene-changed", ctx, createCurrentSceneChangedHandler(handler, EM))) return
 
   // 规则配置发生变更
   if (await listen("rule-config-changed", ctx, createRuleConfigChangedHandler(handler))) return

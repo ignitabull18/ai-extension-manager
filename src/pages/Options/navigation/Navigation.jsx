@@ -8,7 +8,8 @@ import {
   ReconciliationFilled,
   RobotOutlined,
   ThunderboltFilled,
-  ToolFilled
+  ToolFilled,
+  GlobalOutlined
 } from "@ant-design/icons"
 
 import analytics from ".../utils/googleAnalyze"
@@ -49,6 +50,11 @@ function Navigation() {
       <NavLink to="/rule" className="nav-item" onClick={() => reportEvent("rule")}>
         <FilterFilled />
         <span className="text">{getLang("rule_title")}</span>
+      </NavLink>
+
+      <NavLink to="/domain" className="nav-item" onClick={() => reportEvent("domain")}>
+        <GlobalOutlined />
+        <span className="text">{getLang("domain_auto_enable_title") || "Domain Auto-Enable"}</span>
       </NavLink>
 
       <NavLink to="/history" className="nav-item" onClick={() => reportEvent("history")}>

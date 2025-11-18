@@ -129,5 +129,11 @@ declare namespace ruleV2 {
     match?: IMatch
     target?: ITarget
     action?: IAction
+    /** Source of the rule: domain auto-enable or rule editor */
+    source?: "domainAuto" | "ruleEditor"
+    /** Override mode for domain rules: soft (default priority) or override (higher priority) */
+    overrideMode?: "soft" | "override"
+    /** Internal priority for rule execution (higher = executed later, wins conflicts) */
+    priority?: number
   }
 }

@@ -548,6 +548,60 @@
   "setting_import_fail": {
     "message": "Import Fail"
   },
+  "setting_import_invalid": {
+    "message": "Invalid configuration file"
+  },
+  "setting_import_preview": {
+    "message": "Import Preview"
+  },
+  "setting_import_confirm": {
+    "message": "Import"
+  },
+  "setting_import_version": {
+    "message": "Config Version"
+  },
+  "setting_import_settings": {
+    "message": "Settings"
+  },
+  "setting_import_groups": {
+    "message": "Groups"
+  },
+  "setting_import_scenes": {
+    "message": "Scenes"
+  },
+  "setting_import_rules": {
+    "message": "Rules"
+  },
+  "setting_import_domain_rules": {
+    "message": "Domain Rules"
+  },
+  "setting_import_extensions": {
+    "message": "Extension Metadata"
+  },
+  "setting_import_extension_list": {
+    "message": "Extensions List"
+  },
+  "setting_import_extensions_exported": {
+    "message": "extensions exported"
+  },
+  "setting_import_missing_extensions": {
+    "message": "Missing Extensions"
+  },
+  "setting_import_extensions_not_found": {
+    "message": "extensions referenced but not found"
+  },
+  "setting_import_merge": {
+    "message": "Merge (skip existing items)"
+  },
+  "setting_import_overwrite": {
+    "message": "Overwrite (replace existing items)"
+  },
+  "yes": {
+    "message": "Yes"
+  },
+  "no": {
+    "message": "No"
+  },
   "setting_popup_ui_setting": {
     "message": "Popup Display Preferences"
   },
@@ -829,6 +883,96 @@
   },
   "snapshot_delete_all": {
     "message": "Delete All Snapshots"
+  },
+  "domain_auto_enable_title": {
+    "message": "Domain Auto-Enable"
+  },
+  "domain_auto_enable_description": {
+    "message": "Configure extensions to automatically enable when visiting specific domains. Domain rules work with individual extensions, not groups."
+  },
+  "domain_rule_add": {
+    "message": "Add Domain Rule"
+  },
+  "domain_rule_edit": {
+    "message": "Edit Domain Rule"
+  },
+  "domain_rule_delete_confirm": {
+    "message": "Are you sure you want to delete this domain rule?"
+  },
+  "domain_rule_deleted": {
+    "message": "Domain rule deleted"
+  },
+  "domain_rule_domain_copied": {
+    "message": "Domain copied"
+  },
+  "domain_rule_copy_failed": {
+    "message": "Failed to copy domain"
+  },
+  "domain_rule_patterns_required": {
+    "message": "At least one domain pattern is required"
+  },
+  "domain_rule_extensions_required": {
+    "message": "At least one extension is required"
+  },
+  "domain_rule_updated": {
+    "message": "Domain rule updated"
+  },
+  "domain_rule_added": {
+    "message": "Domain rule added"
+  },
+  "domain_rule_save_failed": {
+    "message": "Failed to save domain rule"
+  },
+  "domain_rule_domains": {
+    "message": "Domains/Patterns"
+  },
+  "domain_rule_extensions": {
+    "message": "Extensions"
+  },
+  "domain_rule_extensions_count": {
+    "message": "extensions"
+  },
+  "domain_rule_override": {
+    "message": "Override"
+  },
+  "domain_rule_enabled": {
+    "message": "Enabled"
+  },
+  "domain_rule_patterns": {
+    "message": "Domain/URL Patterns"
+  },
+  "domain_rule_copy_current_domain": {
+    "message": "Copy Current Tab Domain"
+  },
+  "domain_rule_patterns_help": {
+    "message": "One pattern per line. Use wildcard (*) or regex. Example: *example.com*, *github.com/*"
+  },
+  "domain_rule_match_method": {
+    "message": "Match Method"
+  },
+  "domain_rule_wildcard": {
+    "message": "Wildcard"
+  },
+  "domain_rule_regex": {
+    "message": "Regex"
+  },
+  "domain_rule_select_extensions": {
+    "message": "Select extensions"
+  },
+  "domain_rule_override_mode": {
+    "message": "Override Mode"
+  },
+  "domain_rule_override_help": {
+    "message": "Override: Domain rule wins over other rules. Soft: Domain rule works alongside other rules."
+  },
+  "domain_rule_soft": {
+    "message": "Soft (Default Priority)"
+  },
+  "group_always_on": {
+    "message": "Always On"
+  },
+  "group_always_on_help": {
+    "message": "Extensions in this group will be default-enabled on startup and context changes, but can still be disabled by rules."
   },
   "end": {
     "message": "end"

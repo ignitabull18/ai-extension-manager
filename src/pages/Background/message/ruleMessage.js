@@ -1,7 +1,7 @@
 import storage from ".../storage/sync"
 import logger from ".../utils/logger"
 
-export const createCurrentSceneChangedHandler = (handler) => {
+export const createCurrentSceneChangedHandler = (handler, EM) => {
   // 当前情景模式变化时触发
   return (ctx) => {
     logger().debug("[当前情景模式发生变更，重新触发规则执行]", ctx)
@@ -15,7 +15,14 @@ export const createCurrentSceneChangedHandler = (handler) => {
       storage.scene.setActive(params.id)
     }
 
-    // 2. run rules for current scene
+    // 2. Enable always-on extensions when scene changes
+    if (EM?.Extension?.alwaysOnHandler) {
+      EM.Extension.alwaysOnHandler.enableAlwaysOnExtensions().catch((err) => {
+        logger().warn("[RuleMessage] Failed to enable always-on extensions on scene change", err)
+      })
+    }
+
+    // 3. run rules for current scene
     handler.onCurrentSceneChanged(params)
 
     ctx.sendResponse()

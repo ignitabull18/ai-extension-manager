@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 
-import { Button, Form, Input, message } from "antd"
+import { Button, Form, Input, message, Switch } from "antd"
 
 import { storage } from ".../storage/sync"
 import { getLang, isStringEmpty } from ".../utils/utils"
@@ -14,6 +14,7 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
 
   const [name, setGroupName] = useState("")
   const [desc, setGroupDesc] = useState("")
+  const [alwaysOn, setAlwaysOn] = useState(false)
 
   let title = ""
   if (editType === "new") {
@@ -26,9 +27,11 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
     if (editType === "edit") {
       setGroupName(groupInfo.name)
       setGroupDesc(groupInfo.desc)
+      setAlwaysOn(groupInfo.alwaysOn === true)
     } else {
       setGroupName("")
       setGroupDesc("")
+      setAlwaysOn(false)
     }
   }, [editType, groupInfo])
 
@@ -50,16 +53,18 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
       if (editType === "new") {
         const group = {
           name,
-          desc
+          desc,
+          alwaysOn
         }
         await storage.group.addGroup(group)
         setGroupName("")
         setGroupDesc("")
+        setAlwaysOn(false)
         editCallback?.(editType, group)
       } else if (editType === "edit") {
         let info = groupInfo ?? {}
         info = { ...info }
-        Object.assign(info, { name, desc })
+        Object.assign(info, { name, desc, alwaysOn })
         await storage.group.update(info)
         editCallback?.(editType, info)
       }
@@ -91,6 +96,16 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
             value={desc}
             onChange={(e) => onDescChanged(e)}
           />
+        </Form.Item>
+        <Form.Item label={getLang("group_always_on") || "Always On"}>
+          <Switch
+            checked={alwaysOn}
+            onChange={(checked) => setAlwaysOn(checked)}
+          />
+          <div style={{ marginTop: 4, fontSize: "12px", color: "#999" }}>
+            {getLang("group_always_on_help") ||
+              "Extensions in this group will be default-enabled on startup and context changes, but can still be disabled by rules."}
+          </div>
         </Form.Item>
         <Form.Item wrapperCol={{ offset: 4, span: 4 }}>
           <div style={{ display: "flex" }}>

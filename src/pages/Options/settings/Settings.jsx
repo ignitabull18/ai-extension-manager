@@ -1,12 +1,12 @@
 import React, { memo, useCallback, useEffect, useState } from "react"
 
 import { QuestionCircleOutlined } from "@ant-design/icons"
-import { Button, Popconfirm, Radio, Slider, Switch, Tooltip, message } from "antd"
+import { Button, Modal, Popconfirm, Radio, Slider, Switch, Tooltip, message, Descriptions } from "antd"
 
 import storage from ".../storage/sync"
 import { getLang } from ".../utils/utils"
 import Title from "../Title.jsx"
-import { exportConfig, importConfig } from "./ConfigFileBackup.ts"
+import { exportConfig, importConfig, previewImport, IImportPreview } from "./ConfigFileBackup.ts"
 import { SettingStyle } from "./SettingStyle.js"
 import ContentViewSetting from "./components/ContentViewSetting.jsx"
 import FunctionSetting from "./components/FunctionSetting.jsx"
@@ -37,8 +37,23 @@ function Settings() {
     })
   }, [])
 
-  const onImportConfig = async () => {
-    if (await importConfig()) {
+  const [importPreview, setImportPreview] = useState<IImportPreview | null>(null)
+  const [importModalVisible, setImportModalVisible] = useState(false)
+  const [importOverwrite, setImportOverwrite] = useState(false)
+
+  const onPreviewImport = async () => {
+    const preview = await previewImport()
+    if (preview) {
+      setImportPreview(preview)
+      setImportModalVisible(true)
+    } else {
+      messageApi.error(getLang("setting_import_invalid") || "Invalid configuration file")
+    }
+  }
+
+  const onImportConfig = async (overwrite: boolean = false) => {
+    setImportModalVisible(false)
+    if (await importConfig(overwrite)) {
       messageApi.open({
         type: "success",
         content: getLang("setting_import_finish")
@@ -52,6 +67,7 @@ function Settings() {
         content: getLang("setting_import_fail")
       })
     }
+    setImportPreview(null)
   }
 
   const onExportConfig = () => {
@@ -116,7 +132,7 @@ function Settings() {
       </div>
 
       <div className="import-export-container">
-        <Button onClick={onImportConfig}>{getLang("setting_import_config")}</Button>
+        <Button onClick={onPreviewImport}>{getLang("setting_import_config")}</Button>
         <Button onClick={onExportConfig}>{getLang("setting_export_config")}</Button>
         <Tooltip placement="top" title={getLang("setting_restore_default_tip")}>
           <Button onClick={onRestoreDefault}>{getLang("setting_restore_default")}</Button>
@@ -133,6 +149,73 @@ function Settings() {
           <Button danger>{getLang("setting_clear_title")}</Button>
         </Popconfirm>
       </div>
+
+      <Modal
+        title={getLang("setting_import_preview") || "Import Preview"}
+        open={importModalVisible}
+        onOk={() => onImportConfig(importOverwrite)}
+        onCancel={() => {
+          setImportModalVisible(false)
+          setImportPreview(null)
+        }}
+        okText={getLang("setting_import_confirm") || "Import"}
+        cancelText={getLang("cancel") || "Cancel"}
+        width={600}>
+        {importPreview && (
+          <div>
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label={getLang("setting_import_version") || "Config Version"}>
+                {importPreview.version}
+                {importPreview.extensionVersion && ` (Extension ${importPreview.extensionVersion})`}
+              </Descriptions.Item>
+              <Descriptions.Item label={getLang("setting_import_settings") || "Settings"}>
+                {importPreview.settings ? getLang("yes") || "Yes" : getLang("no") || "No"}
+              </Descriptions.Item>
+              <Descriptions.Item label={getLang("setting_import_groups") || "Groups"}>
+                {importPreview.groupsCount} {importPreview.willOverwrite.groups > 0 && `(${importPreview.willOverwrite.groups} will overwrite)`}
+              </Descriptions.Item>
+              <Descriptions.Item label={getLang("setting_import_scenes") || "Scenes"}>
+                {importPreview.scenesCount} {importPreview.willOverwrite.scenes > 0 && `(${importPreview.willOverwrite.scenes} will overwrite)`}
+              </Descriptions.Item>
+              <Descriptions.Item label={getLang("setting_import_rules") || "Rules"}>
+                {importPreview.rulesCount} {importPreview.willOverwrite.rules > 0 && `(${importPreview.willOverwrite.rules} will overwrite)`}
+              </Descriptions.Item>
+              <Descriptions.Item label={getLang("setting_import_domain_rules") || "Domain Rules"}>
+                {importPreview.domainRulesCount} {importPreview.willOverwrite.domainRules > 0 && `(${importPreview.willOverwrite.domainRules} will overwrite)`}
+              </Descriptions.Item>
+              <Descriptions.Item label={getLang("setting_import_extensions") || "Extension Metadata"}>
+                {importPreview.managementExtensionsCount}
+              </Descriptions.Item>
+              <Descriptions.Item label={getLang("setting_import_extension_list") || "Extensions List"}>
+                {importPreview.extensionsCount} {getLang("setting_import_extensions_exported") || "extensions exported"}
+              </Descriptions.Item>
+              {importPreview.missingExtensions.length > 0 && (
+                <Descriptions.Item label={getLang("setting_import_missing_extensions") || "Missing Extensions"}>
+                  <div style={{ color: "#ff4d4f" }}>
+                    {importPreview.missingExtensions.length} {getLang("setting_import_extensions_not_found") || "extensions referenced but not found"}
+                    <div style={{ fontSize: "12px", marginTop: "4px", maxHeight: "100px", overflowY: "auto" }}>
+                      {importPreview.missingExtensions.slice(0, 10).join(", ")}
+                      {importPreview.missingExtensions.length > 10 && "..."}
+                    </div>
+                  </div>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+            <div style={{ marginTop: 16 }}>
+              <Radio.Group
+                value={importOverwrite}
+                onChange={(e) => setImportOverwrite(e.target.value)}>
+                <Radio value={false}>
+                  {getLang("setting_import_merge") || "Merge (skip existing items)"}
+                </Radio>
+                <Radio value={true}>
+                  {getLang("setting_import_overwrite") || "Overwrite (replace existing items)"}
+                </Radio>
+              </Radio.Group>
+            </div>
+          </div>
+        )}
+      </Modal>
     </SettingStyle>
   )
 }

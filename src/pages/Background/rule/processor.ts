@@ -69,10 +69,18 @@ async function processRule({ scene, rules, groups, ctx }: ProcessItem) {
     return
   }
 
+  // Sort rules by priority (higher priority = executed later, wins conflicts)
+  // Rules without priority default to 0
+  const sortedRules = [...rules].sort((a, b) => {
+    const priorityA = a.priority ?? 0
+    const priorityB = b.priority ?? 0
+    return priorityA - priorityB
+  })
+
   // 每一轮规则的执行，使用同一个 handler 实例
   let executeTaskHandler = new ExecuteTaskHandler()
 
-  for (const rule of rules) {
+  for (const rule of sortedRules) {
     try {
       // 每条规则处理的 rule 数据是不用的，这里需要对 ctx 拷贝一个副本，每个实例都是不同的 rule 数据
       const copyCtx = { ...ctx, rule, executeTaskHandler, matchResult: null }
@@ -162,11 +170,17 @@ function handleSimpleMode(
     ctx: ctx
   }
 
+  // Set priority based on rule priority (domain rules with override mode have higher priority)
+  const taskPriority = new ExecuteTaskPriority()
+  if (ctx.rule?.priority !== undefined) {
+    taskPriority.setPriority(ctx.rule.priority)
+  }
+
   if (isMatch && actionType === "closeWhenMatched") {
     ctx.executeTaskHandler.close({
       ...baseInfo,
       reload: action.reloadAfterDisable,
-      priority: new ExecuteTaskPriority()
+      priority: taskPriority
     })
   }
 
@@ -174,7 +188,7 @@ function handleSimpleMode(
     ctx.executeTaskHandler.open({
       ...baseInfo,
       reload: action.reloadAfterEnable,
-      priority: new ExecuteTaskPriority()
+      priority: taskPriority
     })
   }
 
@@ -183,10 +197,13 @@ function handleSimpleMode(
       ctx.executeTaskHandler.close({
         ...baseInfo,
         reload: action.reloadAfterDisable,
-        priority: new ExecuteTaskPriority()
+        priority: taskPriority
       })
     } else {
       let priority = new ExecuteTaskPriority()
+      if (ctx.rule?.priority !== undefined) {
+        priority.setPriority(ctx.rule.priority)
+      }
       priority.setNotMatch()
       ctx.executeTaskHandler.open({
         ...baseInfo,
@@ -201,10 +218,13 @@ function handleSimpleMode(
       ctx.executeTaskHandler.open({
         ...baseInfo,
         reload: action.reloadAfterEnable,
-        priority: new ExecuteTaskPriority()
+        priority: taskPriority
       })
     } else {
       let priority = new ExecuteTaskPriority()
+      if (ctx.rule?.priority !== undefined) {
+        priority.setPriority(ctx.rule.priority)
+      }
       priority.setNotMatch()
       ctx.executeTaskHandler.close({
         ...baseInfo,

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react"
 
-import { DeleteFilled, EditFilled, PlusOutlined } from "@ant-design/icons"
+import { DeleteFilled, EditFilled, PlusOutlined, ThunderboltOutlined } from "@ant-design/icons"
 import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { Popconfirm, message } from "antd"
+import { Popconfirm, message, Tag } from "antd"
 import classNames from "classnames"
 
 import { storage } from ".../storage/sync"
@@ -152,7 +152,14 @@ function GroupNav({
               "tab-container",
               { "selected-group-item": group.id === current?.id }
             ])}>
-            <h3>{group.name}</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <h3>{group.name}</h3>
+              {group.alwaysOn && (
+                <Tag color="orange" icon={<ThunderboltOutlined />} title={getLang("group_always_on") || "Always On"}>
+                  {getLang("group_always_on") || "Always On"}
+                </Tag>
+              )}
+            </div>
 
             {storage.helper.isSpecialGroup(group) || (
               <div className="tab-operation">

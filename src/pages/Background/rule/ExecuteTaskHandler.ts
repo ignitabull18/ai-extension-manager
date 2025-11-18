@@ -53,6 +53,11 @@ export class ExecuteTaskPriority {
   setNotMatch() {
     this._priority -= 100
   }
+
+  // Set the base priority (used for domain rules with override mode)
+  setPriority(value: number) {
+    this._priority = value
+  }
 }
 
 export class ExecuteTaskHandler {

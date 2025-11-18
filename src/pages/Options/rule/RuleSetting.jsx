@@ -34,19 +34,23 @@ function RuleSetting() {
     })
 
     storage.rule.get().then((list) => {
-      setRuleConfigs(list)
+      // Filter out domain auto-enable rules (they're managed separately)
+      const filteredList = list.filter((r) => r.source !== "domainAuto")
+      setRuleConfigs(filteredList)
 
       analytics.fireEvent("rule_setting_open", {
-        totalCount: list.length,
-        enableCount: list.filter((r) => r.enable).length,
-        disableCount: list.filter((r) => !r.enable).length
+        totalCount: filteredList.length,
+        enableCount: filteredList.filter((r) => r.enable).length,
+        disableCount: filteredList.filter((r) => !r.enable).length
       })
     })
   }, [])
 
   const updateRuleConfig = () => {
     storage.rule.get().then((list) => {
-      setRuleConfigs(list)
+      // Filter out domain auto-enable rules (they're managed separately)
+      const filteredList = list.filter((r) => r.source !== "domainAuto")
+      setRuleConfigs(filteredList)
     })
   }
 

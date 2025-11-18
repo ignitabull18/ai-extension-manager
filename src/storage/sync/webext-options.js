@@ -1,4 +1,5 @@
 import { GroupOptions, formatGroups, isSpecialGroup } from "./GroupOptions"
+import { DomainRuleOptions } from "./DomainRuleOptions"
 import { ManageOptions } from "./ManageOptions"
 import { RuleConfigOptions } from "./RuleConfigOptions"
 import { SceneOptions } from "./SceneOptions"
@@ -16,6 +17,7 @@ const storage = {
   group: GroupOptions,
   management: ManageOptions,
   rule: RuleConfigOptions,
+  domainRule: DomainRuleOptions,
   helper
 }
 

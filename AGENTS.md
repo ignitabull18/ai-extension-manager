@@ -99,6 +99,8 @@ const EM = {
 - `rule/` - Rule configuration and editing
   - `editor/` - Rule editor components
   - `view/` - Rule viewer components
+- `domain/` - Domain-based auto-enable rules
+  - `DomainAutoEnable.jsx` - Domain rule management UI
 - `history/` - Extension history viewer
 - `ai/` - AI Assistant interface
   - `AIProfiles.jsx` - Natural language extension management UI
@@ -130,8 +132,9 @@ const EM = {
 
 **Sync Storage** (`src/storage/sync/`):
 - Uses `webext-options-sync` for Chrome sync storage
-- Stores: Settings, Groups, Scenes, Rules, Management data
+- Stores: Settings, Groups, Scenes, Rules, Domain Rules, Management data
 - Automatically syncs across devices
+- `DomainRuleOptions.js` - Domain-based auto-enable rule storage helpers
 
 **Local Storage** (`src/storage/local/`):
 - `LocalOptions.ts` - Local-only options (not synced)
@@ -141,6 +144,13 @@ const EM = {
 **Utilities**:
 - `ConfigCompress.js` - Configuration compression
 - `LargeSyncStorage.js` - Handling large sync storage items
+
+**Config Backup** (`src/pages/Options/settings/ConfigFileBackup.ts`):
+- `exportConfig()` - Export all sync data (settings, groups, scenes, rules, domain rules, management) to JSON
+- `importConfig(overwrite)` - Import configuration with merge or overwrite mode
+- `previewImport()` - Preview what will be imported without applying changes
+- Config bundle includes version metadata and extension version for compatibility tracking
+- Supports cross-browser configuration transfer (useful for Chrome forks like Comet)
 
 ### AI System Architecture
 
@@ -213,6 +223,22 @@ interface IAISuggestedGroup {
 
 #### Rule Types
 
+**Domain Auto-Enable Rules**:
+- Domain rules are stored as `ruleV2.IRuleConfig` with `source="domainAuto"`
+- Managed via `DomainRuleOptions` storage helper (`src/storage/sync/DomainRuleOptions.js`)
+- Support wildcard and regex pattern matching for URLs/domains
+- Work with individual extensions (not groups) for fine-grained control
+- Support override modes: "soft" (default priority) or "override" (priority 10)
+- Filtered from advanced rule editor UI (managed separately in Domain Auto-Enable page)
+- Processed alongside regular rules with priority-based execution
+
+**Always-On Groups**:
+- Groups can have `alwaysOn: boolean` flag in `config.IGroup`
+- Extensions in always-on groups are automatically enabled on startup and scene/group changes
+- Handled by `AlwaysOnGroupHandler` (`src/pages/Background/extension/AlwaysOnGroupHandler.ts`)
+- Always-on groups are not immutable - rules can still disable their extensions
+- Visual indicator (tag) shown in group list for always-on groups
+
 **Rule V2** (Current):
 ```typescript
 interface IRuleConfig {
@@ -246,10 +272,13 @@ interface IRuleConfig {
 **Rule Processing Flow**:
 1. Tab change or extension status change triggers rule evaluation
 2. `RuleHandler.do()` is debounced (20ms)
-3. Rules are processed via `processor.ts`
-4. Matching logic checks all triggers
-5. Actions are queued in `ExecuteTaskHandler`
-6. Extension operations are batched and executed
+3. Rules are fetched from storage (including domain rules)
+4. Rules are sorted by priority (higher priority = executed later, wins conflicts)
+5. Rules are processed via `processor.ts`
+6. Matching logic checks all triggers
+7. Actions are queued in `ExecuteTaskHandler` with priority
+8. Extension operations are batched and executed
+9. Always-on group handler ensures always-on extensions are enabled (runs after rule processing)
 
 ### Data Models
 
@@ -270,6 +299,8 @@ interface IGroup {
   name: string
   desc: string
   extensions: string[] // Extension IDs
+  /** If true, extensions in this group are default-enabled on startup and context changes */
+  alwaysOn?: boolean
 }
 ```
 

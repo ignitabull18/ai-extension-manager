@@ -21,6 +21,8 @@ declare namespace config {
     desc: string
     id: string
     extensions: string[]
+    /** If true, extensions in this group are default-enabled on startup and context changes */
+    alwaysOn?: boolean
   }
 
   export interface IManagement {

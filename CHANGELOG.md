@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Enhanced Configuration Import/Export**: Improved config portability for cross-browser and backup scenarios
+  - Export now includes domain rules, always-on group flags, version metadata, extension version, and complete extension list
+  - Extension list includes all installed extensions with IDs, names, versions, and metadata
+  - Import preview modal shows what will be imported and what will overwrite existing data
+  - Missing extensions detection: warns about extensions referenced in groups/rules but not found in exported list or currently installed
+  - Import options: merge mode (skip existing) or overwrite mode (replace existing)
+  - Config validation ensures imported files have correct structure
+  - Config bundle includes version metadata for compatibility tracking
+  - Supports transferring configuration between Chrome forks (Comet, Edge, etc.) via JSON export/import
+- **Domain-based Auto-Enable**: New feature to automatically enable extensions based on the current domain/URL
+  - Domain Auto-Enable page in Options UI (`src/pages/Options/domain/`) for managing domain rules
+  - Support for wildcard and regex pattern matching
+  - Per-domain override mode: "soft" (default priority) or "override" (higher priority) to control rule precedence
+  - Domain rules work with individual extensions (not groups) for fine-grained control
+  - Quick "copy current tab domain" button for easy rule creation
+  - Domain rules are stored as ruleV2.IRuleConfig with `source="domainAuto"` and filtered from advanced rule editor
+- **Always-On Groups**: Groups can now be marked as "always on"
+  - Extensions in always-on groups are automatically enabled on startup and when scene/group changes
+  - Always-on groups can still be disabled by rules (not immutable)
+  - Visual indicator (tag) in group list showing which groups are always-on
+  - Always-on toggle in group editor UI
+- **Priority-based Rule Processing**: Enhanced rule execution system
+  - Rules now support priority levels (domain rules with override mode have priority 10)
+  - Rules are sorted by priority before execution (higher priority wins conflicts)
+  - ExecuteTaskPriority class extended with `setPriority()` method for rule-based priority control
+
 ### Changed
 - **Build System Optimization**: Migrated from ts-loader + babel-loader to esbuild-loader for significantly faster builds
   - Replaced dual loader chain with single high-performance esbuild-loader for TS/JS/JSX/TSX
