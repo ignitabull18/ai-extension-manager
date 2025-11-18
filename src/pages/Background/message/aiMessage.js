@@ -313,8 +313,8 @@ export const createAIGetSettingsHandler = (EM) => {
       let modelConfig = await EM.LocalOptions.getValue("aiModelConfig")
       if (!modelConfig) {
         modelConfig = {
-          primary: "gpt-5-2025-08-07",
-          fallback: ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+          primary: "gpt-5.1",
+          fallback: ["claude-sonnet-4-5", "gemini-2.5-pro"],
           enabled: false,
           apiKey: "",
           endpoint: ""
@@ -329,8 +329,8 @@ export const createAIGetSettingsHandler = (EM) => {
           aiExternalMetadataUrl,
           modelConfig: {
             enabled: modelConfig.enabled || false,
-            primary: modelConfig.primary || "gpt-5-2025-08-07",
-            fallback: modelConfig.fallback || ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+            primary: modelConfig.primary || "gpt-5.1",
+            fallback: modelConfig.fallback || ["claude-sonnet-4-5", "gemini-2.5-pro"],
             apiKey: modelConfig.apiKey ? "***" + modelConfig.apiKey.slice(-4) : "", // Masked for display
             endpoint: modelConfig.endpoint || ""
           }
@@ -380,8 +380,8 @@ export const createAISetSettingsHandler = (EM) => {
       // Handle model config
       if (settings.modelConfig !== undefined) {
         const currentModelConfig = await EM.LocalOptions.getValue("aiModelConfig") || {
-          primary: "gpt-5-2025-08-07",
-          fallback: ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+          primary: "gpt-5.1",
+          fallback: ["claude-sonnet-4-5", "gemini-2.5-pro"],
           enabled: false,
           apiKey: "",
           endpoint: ""

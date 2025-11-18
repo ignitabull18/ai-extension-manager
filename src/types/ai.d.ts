@@ -117,12 +117,12 @@ declare namespace ai {
     /**
      * Primary model to use
      */
-    primary: "gpt-5-2025-08-07" | "claude-sonnet-4-5-20250929" | "gemini-2.5-pro"
+    primary: "gpt-5.1" | "gpt-5.1-nano" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "gemini-2.5-pro" | "gemini-2.5-flash"
 
     /**
      * Fallback models in order
      */
-    fallback: Array<"gpt-5-2025-08-07" | "claude-sonnet-4-5-20250929" | "gemini-2.5-pro">
+    fallback: Array<"gpt-5.1" | "gpt-5.1-nano" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "gemini-2.5-pro" | "gemini-2.5-flash">
 
     /**
      * API key for the primary model (stored securely)

@@ -19,11 +19,15 @@ export class LLMClient {
 
     try {
       switch (config.primary) {
-        case "gpt-5-2025-08-07":
+        case "gpt-5.1":
+        case "gpt-5.1-nano":
           return await this.callOpenAI(prompt, systemPrompt, config)
-        case "claude-sonnet-4-5-20250929":
+        case "claude-sonnet-4-5":
+        case "claude-haiku-4-5":
+        case "claude-opus-4-1":
           return await this.callAnthropic(prompt, systemPrompt, config)
         case "gemini-2.5-pro":
+        case "gemini-2.5-flash":
           return await this.callGoogle(prompt, systemPrompt, config)
         default:
           throw new Error(`Unsupported model: ${config.primary}`)
@@ -34,13 +38,19 @@ export class LLMClient {
       // Try fallback models
       for (const fallbackModel of config.fallback || []) {
         try {
+          // Create a modified config with the fallback model as primary
+          const fallbackConfig = { ...config, primary: fallbackModel }
           switch (fallbackModel) {
-            case "gpt-5-2025-08-07":
-              return await this.callOpenAI(prompt, systemPrompt, config)
-            case "claude-sonnet-4-5-20250929":
-              return await this.callAnthropic(prompt, systemPrompt, config)
+            case "gpt-5.1":
+            case "gpt-5.1-nano":
+              return await this.callOpenAI(prompt, systemPrompt, fallbackConfig)
+            case "claude-sonnet-4-5":
+            case "claude-haiku-4-5":
+            case "claude-opus-4-1":
+              return await this.callAnthropic(prompt, systemPrompt, fallbackConfig)
             case "gemini-2.5-pro":
-              return await this.callGoogle(prompt, systemPrompt, config)
+            case "gemini-2.5-flash":
+              return await this.callGoogle(prompt, systemPrompt, fallbackConfig)
           }
         } catch (fallbackError) {
           logger().warn(`[LLM] Fallback model ${fallbackModel} also failed`, fallbackError)
@@ -53,7 +63,7 @@ export class LLMClient {
   }
 
   /**
-   * Call OpenAI API (GPT-5)
+   * Call OpenAI API (GPT-5 or GPT-5 Nano)
    */
   private async callOpenAI(
     prompt: string,
@@ -61,6 +71,15 @@ export class LLMClient {
     config: ai.IAIModelConfig
   ): Promise<string> {
     const endpoint = config.endpoint || "https://api.openai.com/v1/chat/completions"
+    
+    // Map model names to actual API model names
+    // Verify exact model names at: https://platform.openai.com/docs/models
+    // OpenAI 5.1 series models
+    const modelMap: Record<string, string> = {
+      "gpt-5.1": "gpt-5.1",
+      "gpt-5.1-nano": "gpt-5.1-nano"
+    }
+    const apiModelName = modelMap[config.primary] || config.primary
     
     const messages: Array<{ role: string; content: string }> = []
     if (systemPrompt) {
@@ -75,7 +94,7 @@ export class LLMClient {
         "Authorization": `Bearer ${config.apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-5-2025-08-07",
+        model: apiModelName,
         messages: messages,
         temperature: 0.7,
         max_tokens: 2000
@@ -101,12 +120,21 @@ export class LLMClient {
   ): Promise<string> {
     const endpoint = config.endpoint || "https://api.anthropic.com/v1/messages"
     
+    // Verify exact model names at: https://docs.claude.com/en/docs/about-claude/models/overview
+    // Claude 4.5 series models - aliases automatically point to latest snapshot
+    const anthropicModelMap: Record<string, string> = {
+      "claude-sonnet-4-5": "claude-sonnet-4-5", // Alias for claude-sonnet-4-5-20250929
+      "claude-haiku-4-5": "claude-haiku-4-5", // Alias for claude-haiku-4-5-20251001
+      "claude-opus-4-1": "claude-opus-4-1" // Alias for claude-opus-4-1-20250805
+    }
+    const apiModelName = anthropicModelMap[config.primary] || config.primary
+    
     const messages: Array<{ role: string; content: string }> = [
       { role: "user", content: prompt }
     ]
 
     const body: any = {
-      model: "claude-sonnet-4-5-20250929",
+      model: apiModelName,
       max_tokens: 2000,
       messages: messages
     }
@@ -135,15 +163,24 @@ export class LLMClient {
   }
 
   /**
-   * Call Google API (Gemini)
+   * Call Google API (Gemini Pro or Flash)
    */
   private async callGoogle(
     prompt: string,
     systemPrompt: string | undefined,
     config: ai.IAIModelConfig
   ): Promise<string> {
+    // Map model names to actual API model names
+    // Verified from: https://ai.google.dev/gemini-api/docs/models
+    // Current models: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash
+    const modelMap: Record<string, string> = {
+      "gemini-2.5-pro": "gemini-2.5-pro",
+      "gemini-2.5-flash": "gemini-2.5-flash"
+    }
+    const apiModelName = modelMap[config.primary] || config.primary
+    
     // Google Gemini API uses API key in query parameter
-    const baseEndpoint = config.endpoint || "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent"
+    const baseEndpoint = config.endpoint || `https://generativelanguage.googleapis.com/v1beta/models/${apiModelName}:generateContent`
     const endpoint = `${baseEndpoint}?key=${config.apiKey}`
     
     const contents: Array<{ role: string; parts: Array<{ text: string }> }> = []

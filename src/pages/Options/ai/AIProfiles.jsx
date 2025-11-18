@@ -31,8 +31,8 @@ function AIProfiles() {
     aiExternalMetadataUrl: "",
     modelConfig: {
       enabled: false,
-      primary: "gpt-5-2025-08-07",
-      fallback: ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+      primary: "gpt-5.1",
+      fallback: ["claude-sonnet-4-5", "gemini-2.5-pro"],
       apiKey: "",
       endpoint: ""
     }
@@ -586,7 +586,7 @@ function AIProfiles() {
                       <div>
                         <Text strong>Primary Model:</Text>
                         <Select
-                          value={aiSettings.modelConfig?.primary || "gpt-5-2025-08-07"}
+                          value={aiSettings.modelConfig?.primary || "gpt-5.1"}
                           onChange={(value) =>
                             setAiSettings({
                               ...aiSettings,
@@ -595,9 +595,13 @@ function AIProfiles() {
                           }
                           style={{ width: "100%", marginTop: "8px" }}
                           options={[
-                            { label: "OpenAI GPT-5", value: "gpt-5-2025-08-07" },
-                            { label: "Anthropic Claude Sonnet 4.5", value: "claude-sonnet-4-5-20250929" },
-                            { label: "Google Gemini 2.5 Pro", value: "gemini-2.5-pro" }
+                            { label: "OpenAI GPT-5.1", value: "gpt-5.1" },
+                            { label: "OpenAI GPT-5.1 Nano", value: "gpt-5.1-nano" },
+                            { label: "Anthropic Claude Sonnet 4.5", value: "claude-sonnet-4-5" },
+                            { label: "Anthropic Claude Haiku 4.5", value: "claude-haiku-4-5" },
+                            { label: "Anthropic Claude Opus 4.1", value: "claude-opus-4-1" },
+                            { label: "Google Gemini 2.5 Pro", value: "gemini-2.5-pro" },
+                            { label: "Google Gemini 2.5 Flash", value: "gemini-2.5-flash" }
                           ]}
                         />
                       </div>
@@ -616,9 +620,9 @@ function AIProfiles() {
                         />
                         <div style={{ marginTop: "4px" }}>
                           <Text type="secondary" style={{ fontSize: "12px" }}>
-                            {aiSettings.modelConfig?.primary === "gpt-5-2025-08-07" && "Get your API key from https://platform.openai.com/api-keys"}
-                            {aiSettings.modelConfig?.primary === "claude-sonnet-4-5-20250929" && "Get your API key from https://console.anthropic.com/"}
-                            {aiSettings.modelConfig?.primary === "gemini-2.5-pro" && "Get your API key from https://makersuite.google.com/app/apikey"}
+                            {(aiSettings.modelConfig?.primary === "gpt-5.1" || aiSettings.modelConfig?.primary === "gpt-5.1-nano") && "Get your API key from https://platform.openai.com/api-keys"}
+                            {(aiSettings.modelConfig?.primary === "claude-sonnet-4-5" || aiSettings.modelConfig?.primary === "claude-haiku-4-5" || aiSettings.modelConfig?.primary === "claude-opus-4-1") && "Get your API key from https://console.anthropic.com/"}
+                            {(aiSettings.modelConfig?.primary === "gemini-2.5-pro" || aiSettings.modelConfig?.primary === "gemini-2.5-flash") && "Get your API key from https://makersuite.google.com/app/apikey"}
                           </Text>
                         </div>
                       </div>

@@ -274,8 +274,8 @@ Based on the user's task, which extensions should be enabled or disabled? Return
   public async getModelConfig(): Promise<ai.IAIModelConfig> {
     const config = await this.EM.LocalOptions.getValue<ai.IAIModelConfig>("aiModelConfig")
     return config || {
-      primary: "gpt-5-2025-08-07",
-      fallback: ["claude-sonnet-4-5-20250929", "gemini-2.5-pro"],
+      primary: "gpt-5.1",
+      fallback: ["claude-sonnet-4-5", "gemini-2.5-pro"],
       enabled: false
     }
   }
