@@ -91,7 +91,9 @@ export class LLMClient {
     }
 
     const data = await response.json()
-    return data.choices?.[0]?.message?.content || ""
+    const content = data.choices?.[0]?.message?.content || ""
+    logger().debug(`[LLM] OpenAI response length: ${content.length} chars`)
+    return content
   }
 
 
@@ -99,22 +101,65 @@ export class LLMClient {
    * Parse JSON response from LLM (handles markdown code blocks)
    */
   public parseJSONResponse(text: string): any {
-    // Try to extract JSON from markdown code blocks
-    const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[1])
-      } catch (e) {
-        // Fall through to try parsing the whole text
+    if (!text || text.trim().length === 0) {
+      logger().warn("[LLM] Empty response from LLM")
+      throw new Error("Empty response from LLM")
+    }
+
+    // Try to extract JSON from markdown code blocks (multiple patterns)
+    const patterns = [
+      /```json\s*(\{[\s\S]*?\})\s*```/,
+      /```\s*(\{[\s\S]*?\})\s*```/,
+      /```json\s*(\[[\s\S]*?\])\s*```/,
+      /```\s*(\[[\s\S]*?\])\s*```/
+    ]
+
+    for (const pattern of patterns) {
+      const jsonMatch = text.match(pattern)
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1])
+          logger().debug("[LLM] Successfully parsed JSON from markdown block")
+          return parsed
+        } catch (e) {
+          logger().warn("[LLM] Failed to parse JSON from markdown block", e)
+          // Continue to try other patterns
+        }
       }
     }
 
-    // Try parsing the whole text as JSON
+    // Try to find JSON object/array in the text (more flexible)
+    const jsonObjectMatch = text.match(/\{[\s\S]*\}/)
+    if (jsonObjectMatch) {
+      try {
+        const parsed = JSON.parse(jsonObjectMatch[0])
+        logger().debug("[LLM] Successfully parsed JSON object from text")
+        return parsed
+      } catch (e) {
+        // Continue to try array
+      }
+    }
+
+    const jsonArrayMatch = text.match(/\[[\s\S]*\]/)
+    if (jsonArrayMatch) {
+      try {
+        const parsed = JSON.parse(jsonArrayMatch[0])
+        logger().debug("[LLM] Successfully parsed JSON array from text")
+        return parsed
+      } catch (e) {
+        // Continue
+      }
+    }
+
+    // Try parsing the whole text as JSON (last resort)
     try {
-      return JSON.parse(text)
+      const parsed = JSON.parse(text.trim())
+      logger().debug("[LLM] Successfully parsed entire text as JSON")
+      return parsed
     } catch (e) {
-      logger().warn("[LLM] Failed to parse JSON response", text)
-      throw new Error("Invalid JSON response from LLM")
+      logger().error("[LLM] Failed to parse JSON response. Response preview:", text.substring(0, 500))
+      logger().error("[LLM] Full response:", text)
+      throw new Error(`Invalid JSON response from LLM: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 }
