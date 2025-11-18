@@ -32,7 +32,7 @@ function AIProfiles() {
     modelConfig: {
       enabled: false,
       primary: "gpt-5.1",
-      fallback: ["gpt-5.1-nano"],
+      fallback: [], // gpt-5.1-nano doesn't exist
       apiKey: "",
       endpoint: ""
     }
@@ -595,8 +595,7 @@ function AIProfiles() {
                           }
                           style={{ width: "100%", marginTop: "8px" }}
                           options={[
-                            { label: "OpenAI GPT-5.1", value: "gpt-5.1" },
-                            { label: "OpenAI GPT-5.1 Nano", value: "gpt-5.1-nano" }
+                            { label: "OpenAI GPT-5.1", value: "gpt-5.1" }
                           ]}
                         />
                       </div>

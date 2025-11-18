@@ -116,14 +116,13 @@ declare namespace ai {
   export interface IAIModelConfig {
     /**
      * Primary model to use (OpenAI only)
-     * Use actual OpenAI API model names like: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo
      */
-    primary: string
+    primary: "gpt-5.1"
 
     /**
      * Fallback models in order (OpenAI only)
      */
-    fallback: string[]
+    fallback: Array<"gpt-5.1">
 
     /**
      * API key for the primary model (stored securely)

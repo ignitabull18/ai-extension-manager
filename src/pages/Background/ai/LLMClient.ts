@@ -51,14 +51,9 @@ export class LLMClient {
   ): Promise<string> {
     const endpoint = config.endpoint || "https://api.openai.com/v1/chat/completions"
     
-    // Map model names to actual API model names
-    // Verify exact model names at: https://platform.openai.com/docs/models
-    // OpenAI 5.1 series models
-    const modelMap: Record<string, string> = {
-      "gpt-5.1": "gpt-5.1",
-      "gpt-5.1-nano": "gpt-5.1-nano"
-    }
-    const apiModelName = modelMap[config.primary] || config.primary
+    // Use the model name directly from config
+    // GPT-5.1 is the current OpenAI model
+    const apiModelName = config.primary
     
     const messages: Array<{ role: string; content: string }> = []
     if (systemPrompt) {
@@ -66,18 +61,27 @@ export class LLMClient {
     }
     messages.push({ role: "user", content: prompt })
 
+    // GPT-5.1 models use max_completion_tokens instead of max_tokens
+    const body: any = {
+      model: apiModelName,
+      messages: messages,
+      temperature: 0.7
+    }
+    
+    // Use max_completion_tokens for GPT-5.1 series, max_tokens for older models
+    if (apiModelName.startsWith("gpt-5")) {
+      body.max_completion_tokens = 2000
+    } else {
+      body.max_tokens = 2000
+    }
+
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${config.apiKey}`
       },
-      body: JSON.stringify({
-        model: apiModelName,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000
-      })
+      body: JSON.stringify(body)
     })
 
     if (!response.ok) {
