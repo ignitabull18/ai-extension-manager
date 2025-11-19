@@ -8,6 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Mutex (Mutual Exclusion) Groups**: Groups can now be marked as "mutex" to ensure only one extension in the group is enabled at a time
+  - When an extension in a mutex group is enabled, all other extensions in that group are automatically disabled
+  - Useful for preventing conflicts between similar extensions (e.g., multiple VPNs, ad blockers)
+  - Visual indicator (purple tag) in group list showing which groups are mutex
+  - Mutex toggle in group editor UI
+  - Handled by `MutexGroupHandler` which listens to extension enable events
+- **Global Keyboard Shortcuts**: Rapid scene switching via hotkeys
+  - `Ctrl+Shift+Right` (Mac: `Cmd+Shift+Right`) - Switch to next scene
+  - `Ctrl+Shift+Left` (Mac: `Cmd+Shift+Left`) - Switch to previous scene
+  - Scenes cycle through available scenes, enabling always-on extensions on switch
+  - Shortcuts defined in `manifest.json` and handled in background script
+- **Rule Indexing Optimization**: Inverted index for efficient rule matching
+  - `RuleIndexer` class builds domain/scene/OS indices for O(1) rule lookup
+  - Reduces rule processing from O(n) to O(1) for domain-based rules
+  - Automatically rebuilds index when rules change
+  - Only activates for rule sets with >10 rules (optimization threshold)
+  - Falls back to full rule processing for rules without URL/scene/OS triggers (ensures backward compatibility)
+
+### Changed
+- **Performance Optimization**: Improved extension management performance
+  - Added in-memory cache for sync storage in background script (`SyncStorageCache.ts`)
+  - Cache automatically invalidates on `chrome.storage.onChanged` events
+  - Reduces redundant `chrome.storage.sync.get()` calls in background script
+  - Cache is only active in background script context (popup/options pages use direct storage access)
+- **Code Quality Improvements**: Refactored large components and improved type safety
+  - Refactored `AIProfiles.jsx` (1069 lines → 230 lines) into focused sub-components:
+    - `EnrichmentSection.jsx` - AI enrichment functionality
+    - `SmartGroupSection.jsx` - Smart group suggestions
+    - `AISettings.jsx` - AI configuration settings
+  - Improved type safety in `RuleHandler.ts`:
+    - Added explicit return types to all methods
+    - Replaced `any` types with proper types (`rule.IRuleConfig`, `chrome.tabs.TabRemoveInfo`)
+    - Fixed singleton pattern typing (`RuleHandler | null` instead of `any`)
+  - Improved type safety in `ExtensionService.ts`:
+    - Added explicit return type to `initial()` method (`Promise<void>`)
+  - All components now follow single responsibility principle and are easier to maintain
+
+### Added
 - **Enhanced Configuration Import/Export**: Improved config portability for cross-browser and backup scenarios
   - Export now includes domain rules, always-on group flags, version metadata, extension version, and complete extension list
   - Extension list includes all installed extensions with IDs, names, versions, and metadata

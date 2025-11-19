@@ -3,6 +3,7 @@ import OptionsSync from "webext-options-sync"
 
 import strCompress from "../utils/ConfigCompress"
 import largeSync from "../utils/LargeSyncStorage"
+import { getSyncStorageCache } from "./SyncStorageCache"
 
 const OptionsStorage = new OptionsSync({
   storageType: "sync",
@@ -58,8 +59,20 @@ const LargeSyncStorage = new ChromeSyncStorage()
 export const SyncOptionsStorage = {
   /**
    * 获取全部配置
+   * Uses in-memory cache in background script context
    */
   async getAll() {
+    // Try to use cache if available (background script context)
+    try {
+      const cache = getSyncStorageCache()
+      if (cache && cache.initialized) {
+        return await cache.getAll()
+      }
+    } catch (error) {
+      // Cache not available, fall back to direct storage access
+      // This is expected in popup/options page contexts
+    }
+
     const options = await LargeSyncStorage.getAll()
 
     if (!options.setting) {
@@ -143,6 +156,15 @@ export const SyncOptionsStorage = {
 
     try {
       await LargeSyncStorage.set(option)
+      // Invalidate background cache if it exists
+      try {
+        const cache = getSyncStorageCache()
+        if (cache) {
+          cache.invalidate()
+        }
+      } catch (error) {
+        // Cache not available, ignore
+      }
       await updateCache()
     } catch (error) {
       console.error("保存配置失败", error)
@@ -163,6 +185,15 @@ export const SyncOptionsStorage = {
     options.management = strCompress.compress(options.management)
     options.ruleConfig = strCompress.compress(options.ruleConfig)
     await LargeSyncStorage.set(options)
+    // Invalidate background cache if it exists
+    try {
+      const cache = getSyncStorageCache()
+      if (cache) {
+        cache.invalidate()
+      }
+    } catch (error) {
+      // Cache not available, ignore
+    }
     await updateCache()
   }
 }

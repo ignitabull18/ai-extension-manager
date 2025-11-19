@@ -23,6 +23,8 @@ declare namespace config {
     extensions: string[]
     /** If true, extensions in this group are default-enabled on startup and context changes */
     alwaysOn?: boolean
+    /** If true, only one extension in this group can be enabled at a time (mutual exclusion) */
+    isMutex?: boolean
   }
 
   export interface IManagement {

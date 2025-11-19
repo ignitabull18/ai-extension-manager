@@ -52,7 +52,7 @@ export class ExtensionService {
   /**
    * 初始化本地缓存的 Extension 信息
    */
-  public async initial() {
+  public async initial(): Promise<void> {
     const lastTime = await this.EM.LocalOptions.getLastInitialTime()
     if (Date.now() - lastTime < 1000 * 60 * 60 * 24) {
       // 24 小时只批量初始化一次，其它的，靠主动更新

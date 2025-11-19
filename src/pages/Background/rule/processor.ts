@@ -69,9 +69,64 @@ async function processRule({ scene, rules, groups, ctx }: ProcessItem) {
     return
   }
 
+  // Use indexer if available to filter rules by URL/scene/OS
+  // This optimization reduces the number of rules we need to check
+  let rulesToProcess: ruleV2.IRuleConfig[] = rules
+
+  // Only use indexer if we have many rules (optimization threshold)
+  // For small rule sets, the overhead of indexing isn't worth it
+  if (rules.length > 10 && ctx.EM?.Rule?.handler?.indexer) {
+    const indexer = ctx.EM.Rule.handler.indexer
+    const candidateRuleIds = new Set<string>()
+
+    // Get rules matching current URL
+    if (ctx.tab?.url) {
+      const urlRules = indexer.getRulesForUrl(ctx.tab.url)
+      urlRules.forEach((id) => candidateRuleIds.add(id))
+    }
+
+    // Get rules matching current scene
+    if (scene?.id) {
+      const sceneRules = indexer.getRulesForScene(scene.id)
+      sceneRules.forEach((id) => candidateRuleIds.add(id))
+    }
+
+    // Get rules matching current OS
+    try {
+      const platform = chrome.runtime.getPlatformInfo ? await chrome.runtime.getPlatformInfo() : null
+      if (platform?.os) {
+        const osRules = indexer.getRulesForOS(platform.os)
+        osRules.forEach((id) => candidateRuleIds.add(id))
+      }
+    } catch (error) {
+      // Platform info not available, skip OS indexing
+    }
+
+    // If we have candidate rules from index, use them; otherwise fall back to all rules
+    // This ensures we don't miss rules that might match via other triggers (e.g., period triggers)
+    if (candidateRuleIds.size > 0 && candidateRuleIds.size < rules.length) {
+      // Only use indexed rules if we've filtered down the set significantly
+      const indexedRules = Array.from(candidateRuleIds)
+        .map((id) => indexer.getRule(id))
+        .filter((r): r is ruleV2.IRuleConfig => r !== undefined)
+      
+      // Merge with rules that don't have URL/scene/OS triggers (they won't be in index)
+      // This ensures we don't miss period-only rules or rules with no triggers
+      const nonIndexedRules = rules.filter((r) => {
+        const hasUrlTrigger = r.match?.triggers?.some((t) => t.trigger === "urlTrigger")
+        const hasSceneTrigger = r.match?.triggers?.some((t) => t.trigger === "sceneTrigger")
+        const hasOsTrigger = r.match?.triggers?.some((t) => t.trigger === "osTrigger")
+        return !hasUrlTrigger && !hasSceneTrigger && !hasOsTrigger
+      })
+      
+      rulesToProcess = [...indexedRules, ...nonIndexedRules]
+    }
+    // If no indexed matches or index didn't help, fall back to all rules
+  }
+
   // Sort rules by priority (higher priority = executed later, wins conflicts)
   // Rules without priority default to 0
-  const sortedRules = [...rules].sort((a, b) => {
+  const sortedRules = [...rulesToProcess].sort((a, b) => {
     const priorityA = a.priority ?? 0
     const priorityB = b.priority ?? 0
     return priorityA - priorityB

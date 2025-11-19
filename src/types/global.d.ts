@@ -10,7 +10,7 @@ import { AIAssistantService } from "../pages/Background/ai/AIAssistantService"
 declare interface IExtensionManager {
   LocalOptions: LocalOptions
   Rule: {
-    handler: RuleHandler
+    handler: RuleHandler & { indexer?: any }
   }
   Extension: {
     items: chrome.management.ExtensionInfo[]

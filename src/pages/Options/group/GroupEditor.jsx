@@ -15,6 +15,7 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
   const [name, setGroupName] = useState("")
   const [desc, setGroupDesc] = useState("")
   const [alwaysOn, setAlwaysOn] = useState(false)
+  const [isMutex, setIsMutex] = useState(false)
 
   let title = ""
   if (editType === "new") {
@@ -28,10 +29,12 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
       setGroupName(groupInfo.name)
       setGroupDesc(groupInfo.desc)
       setAlwaysOn(groupInfo.alwaysOn === true)
+      setIsMutex(groupInfo.isMutex === true)
     } else {
       setGroupName("")
       setGroupDesc("")
       setAlwaysOn(false)
+      setIsMutex(false)
     }
   }, [editType, groupInfo])
 
@@ -54,17 +57,19 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
         const group = {
           name,
           desc,
-          alwaysOn
+          alwaysOn,
+          isMutex
         }
         await storage.group.addGroup(group)
         setGroupName("")
         setGroupDesc("")
         setAlwaysOn(false)
+        setIsMutex(false)
         editCallback?.(editType, group)
       } else if (editType === "edit") {
         let info = groupInfo ?? {}
         info = { ...info }
-        Object.assign(info, { name, desc, alwaysOn })
+        Object.assign(info, { name, desc, alwaysOn, isMutex })
         await storage.group.update(info)
         editCallback?.(editType, info)
       }
@@ -105,6 +110,16 @@ function GroupEditor({ editType, groupInfo, editCallback }) {
           <div style={{ marginTop: 4, fontSize: "12px", color: "#999" }}>
             {getLang("group_always_on_help") ||
               "Extensions in this group will be default-enabled on startup and context changes, but can still be disabled by rules."}
+          </div>
+        </Form.Item>
+        <Form.Item label={getLang("group_mutex") || "Mutual Exclusion"}>
+          <Switch
+            checked={isMutex}
+            onChange={(checked) => setIsMutex(checked)}
+          />
+          <div style={{ marginTop: 4, fontSize: "12px", color: "#999" }}>
+            {getLang("group_mutex_help") ||
+              "Only one extension in this group can be enabled at a time. Enabling one will automatically disable others."}
           </div>
         </Form.Item>
         <Form.Item wrapperCol={{ offset: 4, span: 4 }}>

@@ -3,11 +3,13 @@ import chromeP from "webext-polyfill-kinda"
 import { ExtensionRepo } from "./ExtensionRepo"
 import { ExtensionService } from "./ExtensionService"
 import { AlwaysOnGroupHandler } from "./AlwaysOnGroupHandler"
+import { MutexGroupHandler } from "./MutexGroupHandler"
 
 const createExtension = async (EM) => {
   const repo = new ExtensionRepo()
   const service = new ExtensionService(EM, repo)
   const alwaysOnHandler = new AlwaysOnGroupHandler(EM)
+  const mutexGroupHandler = new MutexGroupHandler(EM)
 
   // Use cached method for initial load
   const exts = await service.getAllExtensions()
@@ -26,6 +28,7 @@ const createExtension = async (EM) => {
     service: service,
     repo: repo,
     alwaysOnHandler: alwaysOnHandler,
+    mutexGroupHandler: mutexGroupHandler,
     getAllExtensions: () => service.getAllExtensions()
   }
 }

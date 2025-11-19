@@ -5,6 +5,7 @@ import type { IExtensionManager } from ".../types/global"
 import logger from ".../utils/logger"
 import ConvertRuleToV2 from "./RuleConverter"
 import processRule from "./processor"
+import { RuleIndexer } from "./RuleIndexer"
 
 export class RuleHandler {
   /**
@@ -30,6 +31,11 @@ export class RuleHandler {
   private _rules?: ruleV2.IRuleConfig[]
 
   /**
+   * 规则索引器，用于快速查找匹配的规则
+   */
+  public indexer: RuleIndexer = new RuleIndexer()
+
+  /**
    * 分组配置信息
    */
   #groups?: config.IGroup[]
@@ -39,48 +45,54 @@ export class RuleHandler {
    */
   private EM?: IExtensionManager
 
-  onCurrentSceneChanged(scene: config.IScene) {
+  onCurrentSceneChanged(scene: config.IScene): void {
     this.#currentScene = scene
     this.invokeDebounceDo()
   }
 
-  onCurrentUrlChanged(tabInfo: chrome.tabs.Tab) {
+  onCurrentUrlChanged(tabInfo: chrome.tabs.Tab): void {
     this.#currentTabInfo = tabInfo
     this.invokeDebounceDo()
   }
 
-  onTabClosed(tabId: number, removeInfo: any) {
+  onTabClosed(tabId: number, removeInfo: chrome.tabs.TabRemoveInfo): void {
     this.invokeDebounceDo()
   }
 
-  onWindowClosed(windowsId: number) {
+  onWindowClosed(windowsId: number): void {
     this.invokeDebounceDo()
   }
 
-  setRules(rules: any[]) {
+  setRules(rules: rule.IRuleConfig[]): void {
     if (!rules || rules.length === 0) {
+      this._rules = []
+      this.indexer.clear()
       return
     }
     this._rules = this.convertRule(rules)
+    // Rebuild index when rules change
+    this.indexer.rebuildIndex(this._rules)
     this.invokeDebounceDo()
   }
 
   init(
     scene: config.IScene,
     tabInfo: chrome.tabs.Tab | undefined,
-    rules: any[],
+    rules: rule.IRuleConfig[],
     groups: config.IGroup[],
     EM: IExtensionManager
-  ) {
+  ): void {
     this.#currentScene = scene
     this.#currentTabInfo = tabInfo
     this._rules = this.convertRule(rules)
+    // Rebuild index on init
+    this.indexer.rebuildIndex(this._rules)
     this.#groups = groups
     this.EM = EM
     this.debounceDo()
   }
 
-  private convertRule(rules: any[]): ruleV2.IRuleConfig[] {
+  private convertRule(rules: rule.IRuleConfig[]): ruleV2.IRuleConfig[] {
     if (!rules || rules.length === 0) {
       return []
     }
@@ -91,13 +103,13 @@ export class RuleHandler {
     return ruleList
   }
 
-  private async invokeDebounceDo() {
+  private invokeDebounceDo(): void {
     this.debounceDo()
   }
 
-  private debounceDo
+  private debounceDo: () => void
 
-  private async do() {
+  private async do(): Promise<void> {
     logger().debug("[Extension Manager] 执行规则")
 
     const self = await chromeP.management.getSelf()
@@ -123,8 +135,8 @@ export class RuleHandler {
 
 // use singleton pattern to create a rule handler
 const createRuleHandler: () => RuleHandler = (function () {
-  let instance: any = null
-  return function () {
+  let instance: RuleHandler | null = null
+  return function (): RuleHandler {
     if (!instance) {
       instance = new RuleHandler()
     }

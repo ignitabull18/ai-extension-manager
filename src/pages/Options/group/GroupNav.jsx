@@ -154,6 +154,11 @@ function GroupNav({
             ])}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <h3>{group.name}</h3>
+              {group.isMutex && (
+                <Tag color="purple" icon={<ThunderboltOutlined />} style={{ marginLeft: 8 }}>
+                  {getLang("group_mutex") || "Mutex"}
+                </Tag>
+              )}
               {group.alwaysOn && (
                 <Tag color="orange" icon={<ThunderboltOutlined />} title={getLang("group_always_on") || "Always On"}>
                   {getLang("group_always_on") || "Always On"}

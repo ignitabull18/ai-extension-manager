@@ -974,6 +974,12 @@
   "group_always_on_help": {
     "message": "Extensions in this group will be default-enabled on startup and context changes, but can still be disabled by rules."
   },
+  "group_mutex": {
+    "message": "Mutual Exclusion"
+  },
+  "group_mutex_help": {
+    "message": "Only one extension in this group can be enabled at a time. Enabling one will automatically disable others."
+  },
   "end": {
     "message": "end"
   }
